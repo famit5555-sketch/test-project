@@ -1296,6 +1296,7 @@
         }
 
         state.employees.forEach(function(emp){
+          if (!emp.avail[dayDef.key]) return;
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
