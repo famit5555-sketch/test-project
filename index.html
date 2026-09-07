@@ -227,6 +227,8 @@
   .day-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .max-input-wrap { display: flex; align-items: center; gap: 5px; margin-left: auto; }
   .max-input-wrap label { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+  .priority-wrap { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); white-space: nowrap; cursor: pointer; }
+  .priority-wrap input { accent-color: var(--accent); cursor: pointer; }
   .max-input {
     width: 40px;
     border: 1px solid var(--line);
@@ -644,8 +646,8 @@
     return !!holidayCache[year][toISO(date)];
   }
 
-  function mkEmp(name, role, avail, weeklyMax, notes){
-    return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || ''};
+  function mkEmp(name, role, avail, weeklyMax, notes, priorityExtra){
+    return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || '', priorityExtra: !!priorityExtra};
   }
 
   function emptyRequired(){ return {mon:0, tue:0, wed:0, thu:0, fri:0, sat:0, holiday:0}; }
@@ -655,7 +657,7 @@
       mkEmp('安井', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('西田', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('鈴木', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('藤村', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('藤村', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 6, '追加シフト希望(稼ぎたい)', true),
       mkEmp('坂本', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('漢那', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
       mkEmp('藤原', '配送2', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
@@ -919,7 +921,8 @@
         });
         candidates = shuffle(candidates);
         candidates.sort(function(a, b){
-          return (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
+          var pa = a.priorityExtra ? 0 : 1, pb = b.priorityExtra ? 0 : 1;
+          return (pa - pb) || (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
         });
 
         var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
@@ -1078,8 +1081,22 @@
       maxWrap.appendChild(maxLabel);
       maxWrap.appendChild(maxInput);
 
+      var priorityWrap = document.createElement('label');
+      priorityWrap.className = 'priority-wrap';
+      priorityWrap.title = '優先的に多めのシフトを割り当てます(週上限まで)';
+      var priorityInput = document.createElement('input');
+      priorityInput.type = 'checkbox';
+      priorityInput.checked = !!emp.priorityExtra;
+      priorityInput.addEventListener('change', function(){
+        emp.priorityExtra = priorityInput.checked;
+        saveState();
+      });
+      priorityWrap.appendChild(priorityInput);
+      priorityWrap.appendChild(document.createTextNode('多めに希望'));
+
       meta.appendChild(toggleGroup);
       meta.appendChild(maxWrap);
+      meta.appendChild(priorityWrap);
 
       var notesInput = document.createElement('input');
       notesInput.type = 'text';
