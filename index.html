@@ -342,6 +342,8 @@
     text-align: left; cursor: pointer;
   }
   .attend-row:hover { filter: brightness(1.05); }
+  .attend-row.readonly { cursor: default; }
+  .attend-row.readonly:hover { filter: none; }
   .attend-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .attend-name { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); }
   .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); }
@@ -353,7 +355,8 @@
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
 
   /* ---------- Employee (mobile) view ---------- */
-  .employee-view { max-width: 560px; margin: 0 auto; }
+  .employee-view { max-width: 900px; margin: 0 auto; }
+  .employee-view .panel:not(#myShiftsPanel) { max-width: 560px; margin-left: auto; margin-right: auto; }
   .shift-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
   .shift-card + .shift-card { margin-top: 8px; }
   .shift-card-date { font-family: var(--font-display); font-weight: 600; font-size: 15px; width: 60px; flex-shrink: 0; text-align: center; font-variant-numeric: tabular-nums; }
@@ -485,17 +488,19 @@
   </div>
 
   <div id="employeeView" class="employee-view" hidden>
-    <section class="panel" id="whoAmIPanel">
+    <section class="panel" id="myShiftsPanel">
+      <h2>勤務表</h2>
+      <p class="panel-sub">管理者と同じ勤務表です(閲覧のみ、編集はできません)。</p>
+      <div id="employeeScheduleContainer"></div>
+    </section>
+
+    <section class="panel" id="whoAmIPanel" style="margin-top:16px;">
       <h2>あなたの氏名</h2>
       <select id="whoAmISelect"></select>
-      <p class="panel-sub" style="margin:8px 0 0;">氏名を選ぶと、あなたのシフトと希望フォームが表示されます。</p>
+      <p class="panel-sub" style="margin:8px 0 0;">氏名を選ぶと、希望フォームが表示されます。</p>
     </section>
 
     <div id="employeeContent" hidden>
-      <section class="panel" id="myShiftsPanel" style="margin-top:16px;">
-        <h2>あなたのシフト</h2>
-        <div id="myShiftsList"></div>
-      </section>
 
       <section class="panel" id="requestFormPanel" style="margin-top:16px;">
         <h2>希望を出す</h2>
@@ -535,7 +540,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = 'famit-shift-v6';
+  var STORAGE_KEY = 'famit-shift-v7';
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
@@ -642,13 +647,13 @@
   function defaultState(){
     var employees = [
       mkEmp('安井', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
       mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)'),
-      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
-      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)')
+      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)')
     ];
     var requiredByRole = {
       '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
@@ -1259,7 +1264,7 @@
     renderSummary();
   }
 
-  function buildWeeksInto(container, roles, assignmentsByRole){
+  function buildWeeksInto(container, roles, assignmentsByRole, readOnly){
     var dates = [];
     roles.forEach(function(role){
       Object.keys(assignmentsByRole[role] || {}).forEach(function(iso){
@@ -1317,9 +1322,9 @@
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
 
-          var rowBtn = document.createElement('button');
-          rowBtn.type = 'button';
-          rowBtn.className = 'attend-row' + (working ? '' : ' off');
+          var rowBtn = document.createElement(readOnly ? 'div' : 'button');
+          if (!readOnly) rowBtn.type = 'button';
+          rowBtn.className = 'attend-row' + (working ? '' : ' off') + (readOnly ? ' readonly' : '');
 
           var nameSpan = document.createElement('span');
           nameSpan.className = 'attend-name';
@@ -1330,10 +1335,12 @@
 
           rowBtn.appendChild(nameSpan);
           rowBtn.appendChild(statusSpan);
-          rowBtn.title = 'クリックで出勤・休みを切り替え';
-          rowBtn.addEventListener('click', function(){
-            toggleAttendance(emp, iso);
-          });
+          if (!readOnly) {
+            rowBtn.title = 'クリックで出勤・休みを切り替え';
+            rowBtn.addEventListener('click', function(){
+              toggleAttendance(emp, iso);
+            });
+          }
 
           cell.appendChild(rowBtn);
         });
@@ -1354,29 +1361,33 @@
     return true;
   }
 
-  function renderSchedule(){
-    scheduleContainerEl.innerHTML = '';
+  function renderScheduleInto(targetEl, readOnly){
+    targetEl.innerHTML = '';
     var roles = getActiveRoles();
     if (roles.length === 0 || Object.keys(state.assignmentsByRole).length === 0) {
       var empty = document.createElement('div');
       empty.className = 'empty-state';
-      empty.textContent = 'まだシフトが生成されていません。左側の「シフトを自動生成」を押してください。';
-      scheduleContainerEl.appendChild(empty);
+      empty.textContent = 'まだシフトが生成されていません。';
+      targetEl.appendChild(empty);
       return;
     }
 
     var scroll = document.createElement('div');
     scroll.className = 'schedule-scroll';
-    var had = buildWeeksInto(scroll, roles, state.assignmentsByRole);
-    scheduleContainerEl.appendChild(scroll);
+    var had = buildWeeksInto(scroll, roles, state.assignmentsByRole, readOnly);
+    targetEl.appendChild(scroll);
 
     if (!had) {
-      scheduleContainerEl.innerHTML = '';
+      targetEl.innerHTML = '';
       var empty2 = document.createElement('div');
       empty2.className = 'empty-state';
-      empty2.textContent = 'まだシフトが生成されていません。左側の「シフトを自動生成」を押してください。';
-      scheduleContainerEl.appendChild(empty2);
+      empty2.textContent = 'まだシフトが生成されていません。';
+      targetEl.appendChild(empty2);
     }
+  }
+
+  function renderSchedule(){
+    renderScheduleInto(scheduleContainerEl, false);
   }
 
   function renderSummary(){
@@ -1523,40 +1534,9 @@
   function getMyId(){ try { return localStorage.getItem(MY_ID_KEY) || ''; } catch (e) { return ''; } }
   function setMyId(id){ try { localStorage.setItem(MY_ID_KEY, id); } catch (e) {} }
 
-  function renderMyShifts(emp){
-    var list = document.getElementById('myShiftsList');
-    list.innerHTML = '';
-    var items = [];
-    Object.keys(state.assignmentsByRole).forEach(function(role){
-      var assignments = state.assignmentsByRole[role];
-      Object.keys(assignments).forEach(function(iso){
-        if (assignments[iso].indexOf(emp.id) !== -1) items.push({date: iso, role: role});
-      });
-    });
-    items.sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-    if (items.length === 0) {
-      var p = document.createElement('p');
-      p.className = 'panel-sub';
-      p.style.margin = '0';
-      p.textContent = '今のところ、あなたが割り当てられているシフトはありません。';
-      list.appendChild(p);
-      return;
-    }
-    items.forEach(function(item){
-      var d = fromISO(item.date);
-      var dayDef = DAYS[d.getDay() - 1] || DAYS[5];
-      var card = document.createElement('div');
-      card.className = 'shift-card';
-      var dateBox = document.createElement('div');
-      dateBox.className = 'shift-card-date';
-      dateBox.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + '<span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
-      var roleLabel = document.createElement('span');
-      roleLabel.className = 'shift-card-role';
-      roleLabel.textContent = item.role;
-      card.appendChild(dateBox);
-      card.appendChild(roleLabel);
-      list.appendChild(card);
-    });
+  function renderEmployeeSchedule(){
+    var target = document.getElementById('employeeScheduleContainer');
+    if (target) renderScheduleInto(target, true);
   }
 
   function renderMyRequests(emp){
@@ -1593,8 +1573,8 @@
     var content = document.getElementById('employeeContent');
     var emp = empById(myId);
     content.hidden = !emp;
+    renderEmployeeSchedule();
     if (emp) {
-      renderMyShifts(emp);
       renderMyRequests(emp);
     }
   }
