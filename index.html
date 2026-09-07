@@ -266,7 +266,7 @@
     color: var(--ink);
     margin: 0 0 7px;
   }
-  .req-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .req-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .req-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 4px 9px; text-align: center; }
   .req-cell .req-day { font-family: var(--font-display); font-size: 12px; font-weight: 600; color: var(--ink-soft); display: block; margin-bottom: 5px; }
   .req-input {
@@ -583,11 +583,72 @@
     return a;
   }
 
+  // ---------- Japanese public holidays (computed, not a fixed table) ----------
+  function calcSpringEquinoxDay(year){
+    return Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  }
+  function calcAutumnEquinoxDay(year){
+    return Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  }
+  function nthWeekdayOfMonth(year, month, weekday, n){
+    var d = new Date(year, month - 1, 1);
+    var offset = (weekday - d.getDay() + 7) % 7;
+    return new Date(year, month - 1, 1 + offset + (n - 1) * 7);
+  }
+  function computeJapaneseHolidayDates(year){
+    var dates = [];
+    function add(y, m, day){ dates.push(new Date(y, m - 1, day)); }
+    add(year, 1, 1);
+    add(year, 1, nthWeekdayOfMonth(year, 1, 1, 2).getDate());
+    add(year, 2, 11);
+    add(year, 2, 23);
+    add(year, 3, calcSpringEquinoxDay(year));
+    add(year, 4, 29);
+    add(year, 5, 3);
+    add(year, 5, 4);
+    add(year, 5, 5);
+    add(year, 7, nthWeekdayOfMonth(year, 7, 1, 3).getDate());
+    add(year, 8, 11);
+    add(year, 9, nthWeekdayOfMonth(year, 9, 1, 3).getDate());
+    add(year, 9, calcAutumnEquinoxDay(year));
+    add(year, 10, nthWeekdayOfMonth(year, 10, 1, 2).getDate());
+    add(year, 11, 3);
+    add(year, 11, 23);
+
+    var set = {};
+    dates.forEach(function(d){ set[toISO(d)] = true; });
+
+    // 振替休日: a holiday on Sunday shifts to the next non-holiday day.
+    dates.slice().forEach(function(d){
+      if (d.getDay() === 0) {
+        var sub = addDays(d, 1);
+        while (set[toISO(sub)]) sub = addDays(sub, 1);
+        set[toISO(sub)] = true;
+      }
+    });
+
+    // 国民の休日: a non-Sunday weekday sandwiched between two holidays.
+    var start = new Date(year, 0, 1), end = new Date(year, 11, 31);
+    for (var cur = start; cur <= end; cur = addDays(cur, 1)) {
+      var iso = toISO(cur);
+      if (!set[iso] && cur.getDay() !== 0 && set[toISO(addDays(cur, -1))] && set[toISO(addDays(cur, 1))]) {
+        set[iso] = true;
+      }
+    }
+    return set;
+  }
+  var holidayCache = {};
+  function isJapaneseHoliday(date){
+    var year = date.getFullYear();
+    if (!holidayCache[year]) holidayCache[year] = computeJapaneseHolidayDates(year);
+    return !!holidayCache[year][toISO(date)];
+  }
+
   function mkEmp(name, role, avail, weeklyMax, notes){
     return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || ''};
   }
 
-  function emptyRequired(){ return {mon:0, tue:0, wed:0, thu:0, fri:0, sat:0}; }
+  function emptyRequired(){ return {mon:0, tue:0, wed:0, thu:0, fri:0, sat:0, holiday:0}; }
 
   function defaultState(){
     var employees = [
@@ -601,9 +662,9 @@
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
     ];
     var requiredByRole = {
-      '配送1': {mon:3, tue:3, wed:2, thu:2, fri:2, sat:3},
-      '配送2': {mon:3, tue:3, wed:3, thu:3, fri:3, sat:1},
-      '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0}
+      '配送1': {mon:3, tue:3, wed:2, thu:2, fri:2, sat:3, holiday:3},
+      '配送2': {mon:3, tue:3, wed:3, thu:3, fri:3, sat:1, holiday:1},
+      '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
     var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: []};
@@ -774,17 +835,23 @@
   function ensureRequiredForRoles(){
     getActiveRoles().forEach(function(role){
       if (!state.requiredByRole[role]) state.requiredByRole[role] = emptyRequired();
+      var req = state.requiredByRole[role];
+      if (req.holiday == null) req.holiday = req.sat || 0;
       if (ROLE_MIN_ONE[role]) {
-        var req = state.requiredByRole[role];
         DAYS.forEach(function(day){ req[day.key] = Math.max(1, req[day.key]); });
+        req.holiday = Math.max(1, req.holiday);
       }
     });
   }
 
   // Best-effort heuristic: give each employee a weekly target (their
   // weeklyMax if set, else however many days they're available, capped
-  // at their own availability) and spread that total across weekdays
-  // proportionally to how many people are available each day.
+  // at their own availability). Start every day at full attendance
+  // (everyone available works), then if the roster's weekly target is
+  // short of that, trim the gap starting with Wednesday/Thursday first
+  // (spilling to Friday/Tuesday/Monday, Saturday last) so Saturday stays
+  // as staffed as possible. Holidays are treated like Saturday.
+  var REDUCE_PRIORITY = ['wed', 'thu', 'fri', 'tue', 'mon', 'sat'];
   function autoCalcRequired(role){
     var emps = state.employees.filter(function(e){ return (e.role || '未設定') === role; });
     var floor = ROLE_MIN_ONE[role] ? 1 : 0;
@@ -799,30 +866,21 @@
       capacity += target;
     });
 
+    var result = {};
+    DAYS.forEach(function(d){ result[d.key] = availCount[d.key]; });
     var totalAvailSlots = DAYS.reduce(function(s, d){ return s + availCount[d.key]; }, 0);
-    var result = {}; var fracs = [];
-    DAYS.forEach(function(d){
-      var share = totalAvailSlots > 0 ? capacity * (availCount[d.key] / totalAvailSlots) : 0;
-      var base = Math.min(Math.floor(share), availCount[d.key]);
-      result[d.key] = base;
-      fracs.push({key: d.key, frac: share - Math.floor(share), cap: availCount[d.key]});
+    var shortfall = Math.max(0, totalAvailSlots - capacity);
+
+    REDUCE_PRIORITY.forEach(function(key){
+      if (shortfall <= 0) return;
+      var reducible = Math.max(0, result[key] - floor);
+      var cut = Math.min(reducible, shortfall);
+      result[key] -= cut;
+      shortfall -= cut;
     });
 
-    var assigned = DAYS.reduce(function(s, d){ return s + result[d.key]; }, 0);
-    var remaining = Math.max(0, Math.round(capacity) - assigned);
-    fracs.sort(function(a, b){ return b.frac - a.frac; });
-    var guard = 0;
-    while (remaining > 0 && guard < 60) {
-      var any = false;
-      for (var i = 0; i < fracs.length && remaining > 0; i++) {
-        var f = fracs[i];
-        if (result[f.key] < f.cap) { result[f.key]++; remaining--; any = true; }
-      }
-      guard++;
-      if (!any) break;
-    }
-
     DAYS.forEach(function(d){ result[d.key] = Math.max(floor, result[d.key]); });
+    result.holiday = Math.max(floor, result.sat);
     return result;
   }
 
@@ -840,15 +898,17 @@
     var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
     var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
     var warnings = [];
-    var cur = fromISO(startISO);
-    var dayIndex = 0;
+    var startDate = fromISO(startISO);
 
     for (var w = 0; w < weeks; w++) {
       var weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; });
       for (var d = 0; d < 6; d++) {
+        var dayIndex = w * 6 + d;
+        var cur = addDays(startDate, w * 7 + d);
         var dayKey = DAYS[d].key;
         var iso = toISO(cur);
-        var need = required[dayKey] || 0;
+        var isHoliday = required.holiday != null && isJapaneseHoliday(cur);
+        var need = isHoliday ? required.holiday : (required[dayKey] || 0);
 
         var candidates = employees.filter(function(e){
           return e.avail[dayKey] && (e.weeklyMax == null || weeklyCount[e.id] < e.weeklyMax);
@@ -873,10 +933,8 @@
           if (id) { totalCount[id]++; weeklyCount[id]++; lastIndex[id] = dayIndex; }
         });
         if (chosen.indexOf(null) !== -1) {
-          warnings.push({date: iso, dayLabel: DAYS[d].label, need: need, filled: chosen.filter(Boolean).length});
+          warnings.push({date: iso, dayLabel: DAYS[d].label, need: need, filled: chosen.filter(Boolean).length, holiday: isHoliday});
         }
-        dayIndex++;
-        cur = addDays(cur, 1);
       }
     }
     return {assignments: assignments, warnings: warnings};
@@ -1057,27 +1115,29 @@
       var floor = ROLE_MIN_ONE[role] ? 1 : 0;
       var grid = document.createElement('div');
       grid.className = 'req-grid';
-      DAYS.forEach(function(day){
+      function buildReqCell(fieldKey, label){
         var cell = document.createElement('div');
         cell.className = 'req-cell';
-        var label = document.createElement('span');
-        label.className = 'req-day';
-        label.textContent = day.label;
+        var labelEl = document.createElement('span');
+        labelEl.className = 'req-day';
+        labelEl.textContent = label;
         var input = document.createElement('input');
         input.type = 'number';
         input.className = 'req-input';
         input.min = String(floor);
-        input.value = Math.max(floor, state.requiredByRole[role][day.key]);
+        input.value = Math.max(floor, state.requiredByRole[role][fieldKey]);
         input.addEventListener('input', function(){
-          state.requiredByRole[role][day.key] = Math.max(floor, parseInt(input.value, 10) || floor);
+          state.requiredByRole[role][fieldKey] = Math.max(floor, parseInt(input.value, 10) || floor);
           if (parseInt(input.value, 10) < floor) input.value = floor;
           saveStateDebounced();
         });
         input.addEventListener('blur', function(){ saveState(); });
-        cell.appendChild(label);
+        cell.appendChild(labelEl);
         cell.appendChild(input);
-        grid.appendChild(cell);
-      });
+        return cell;
+      }
+      DAYS.forEach(function(day){ grid.appendChild(buildReqCell(day.key, day.label)); });
+      grid.appendChild(buildReqCell('holiday', '祝日'));
       block.appendChild(grid);
       requiredByRoleEl.appendChild(block);
     });
@@ -1115,7 +1175,7 @@
     box.hidden = false;
     var items = state.warnings.slice(0, 8).map(function(w){
       var d = fromISO(w.date);
-      return '<li>' + w.role + ' ・ ' + (d.getMonth()+1) + '/' + d.getDate() + '(' + w.dayLabel + ')：必要' + w.need + '人に対し' + w.filled + '人しか配置できませんでした</li>';
+      return '<li>' + w.role + ' ・ ' + (d.getMonth()+1) + '/' + d.getDate() + '(' + w.dayLabel + (w.holiday ? '・祝' : '') + ')：必要' + w.need + '人に対し' + w.filled + '人しか配置できませんでした</li>';
     }).join('');
     var more = state.warnings.length > 8 ? '<li>他 ' + (state.warnings.length - 8) + ' 件…</li>' : '';
     box.innerHTML = '<strong>⚠ 出勤可能な人数が不足している日があります</strong><ul>' + items + more + '</ul>';
@@ -1160,7 +1220,7 @@
         head.className = 'day-cell-head';
         var dateEl = document.createElement('span');
         dateEl.className = 'day-cell-date';
-        dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + ')</span>';
+        dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
         head.appendChild(dateEl);
         cell.appendChild(head);
 
@@ -1464,7 +1524,7 @@
       card.className = 'shift-card';
       var dateBox = document.createElement('div');
       dateBox.className = 'shift-card-date';
-      dateBox.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + '<span>(' + dayDef.label + ')</span>';
+      dateBox.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + '<span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
       var dot = document.createElement('span');
       dot.className = 'shift-card-dot';
       dot.style.background = groupColor(displayGroupOf(item.role));
