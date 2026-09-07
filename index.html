@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ファミットシフト</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Karla:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #EDF1F5;
+    --surface: #FFFFFF;
+    --surface-2: #F5F8FB;
+    --surface-3: #E7ECF2;
+    --ink: #16202E;
+    --ink-soft: #576475;
+    --ink-faint: #8B96A5;
+    --line: #D7DFE7;
+    --accent: #DD6A2C;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #FBE4D4;
+    --success: #2E8B57;
+    --success-soft: #DFF3E6;
+    --warning: #A66A12;
+    --warning-soft: #FBEBD3;
+    --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
+    --radius: 12px;
+    --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
+    --font-body: 'Karla', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', Meiryo, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F141C;
+      --surface: #19212D;
+      --surface-2: #1E2733;
+      --surface-3: #29333F;
+      --ink: #E8ECF2;
+      --ink-soft: #A6B1C0;
+      --ink-faint: #6C7A8C;
+      --line: #2C3644;
+      --accent: #FF8A50;
+      --accent-ink: #1A0F08;
+      --accent-soft: #3A2416;
+      --success: #4FBE85;
+      --success-soft: #163527;
+      --warning: #E3A93F;
+      --warning-soft: #3A2C10;
+      --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F141C;
+    --surface: #19212D;
+    --surface-2: #1E2733;
+    --surface-3: #29333F;
+    --ink: #E8ECF2;
+    --ink-soft: #A6B1C0;
+    --ink-faint: #6C7A8C;
+    --line: #2C3644;
+    --accent: #FF8A50;
+    --accent-ink: #1A0F08;
+    --accent-soft: #3A2416;
+    --success: #4FBE85;
+    --success-soft: #163527;
+    --warning: #E3A93F;
+    --warning-soft: #3A2C10;
+    --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+
+  /* ---------- Header ---------- */
+  header.app-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 24px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-mark { flex-shrink: 0; }
+  .eyebrow {
+    font-family: var(--font-body);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin: 0 0 4px;
+  }
+  h1.app-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .header-actions { display: flex; gap: 10px; }
+
+  button { font-family: var(--font-body); cursor: pointer; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 9px 16px;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  }
+  .btn:hover { background: var(--surface-2); }
+  .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn-primary:hover { filter: brightness(1.06); background: var(--accent); }
+  .add-emp-btn { margin-top: 12px; width: 100%; justify-content: center; }
+
+  /* ---------- Layout ---------- */
+  .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px 18px 20px;
+  }
+  .panel + .panel { margin-top: 18px; }
+  .panel h2 {
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    margin: 0 0 3px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .panel .panel-sub { font-size: 12px; color: var(--ink-soft); margin: 0 0 14px; }
+  .panel-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .panel-hint {
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px dashed var(--line);
+  }
+
+  /* ---------- Employee rows ---------- */
+  .emp-row { padding: 12px 0; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 7px; }
+  .emp-row:first-of-type { padding-top: 4px; }
+  .emp-row:last-of-type { border-bottom: none; }
+  .emp-row-top { display: flex; align-items: center; gap: 6px; }
+  .emp-name-input {
+    flex: 1; min-width: 0;
+    border: 1px solid transparent;
+    background: transparent;
+    font-weight: 700;
+    font-size: 13.5px;
+    color: var(--ink);
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+  }
+  .emp-name-input:hover, .emp-name-input:focus { background: var(--surface-2); border-color: var(--line); outline: none; }
+  .role-input {
+    width: 92px; flex-shrink: 0;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    font-weight: 700;
+    padding: 5px 6px;
+    font-family: var(--font-body);
+    text-align: center;
+  }
+  .emp-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .day-toggle-group { display: flex; gap: 4px; }
+  .day-toggle {
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink-faint);
+    font-size: 11.5px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0;
+  }
+  .day-toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .day-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .max-input-wrap { display: flex; align-items: center; gap: 5px; margin-left: auto; }
+  .max-input-wrap label { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
+  .max-input {
+    width: 40px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--ink);
+    font-size: 12.5px;
+    padding: 4px 5px;
+    font-variant-numeric: tabular-nums;
+    font-family: var(--font-body);
+  }
+  .notes-input {
+    width: 100%;
+    border: 1px solid transparent;
+    background: transparent;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-family: var(--font-body);
+  }
+  .notes-input:hover, .notes-input:focus { background: var(--surface-2); border-color: var(--line); outline: none; }
+  .icon-btn {
+    border: none; background: transparent; color: var(--ink-faint);
+    width: 26px; height: 26px; border-radius: 6px; font-size: 15px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .icon-btn:hover { background: var(--warning-soft); color: var(--warning); }
+
+  /* ---------- Required headcount ---------- */
+  .role-required-block + .role-required-block { margin-top: 14px; }
+  .role-required-title {
+    font-family: var(--font-display);
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--ink);
+    margin: 0 0 7px;
+  }
+  .req-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .req-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 4px 9px; text-align: center; }
+  .req-cell .req-day { font-family: var(--font-display); font-size: 12px; font-weight: 600; color: var(--ink-soft); display: block; margin-bottom: 5px; }
+  .req-input {
+    width: 100%; text-align: center;
+    border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); color: var(--ink);
+    font-size: 15px; font-weight: 700; padding: 4px 0;
+    font-variant-numeric: tabular-nums; font-family: var(--font-display);
+  }
+
+  /* ---------- Period panel ---------- */
+  .period-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .field { flex: 1; }
+  .field label { display: block; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 5px; font-weight: 600; }
+  .field input {
+    width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface-2); color: var(--ink); font-size: 13.5px;
+    padding: 8px 9px; font-family: var(--font-body); font-variant-numeric: tabular-nums;
+  }
+  .generate-btn { width: 100%; justify-content: center; padding: 11px; font-size: 14px; }
+  .warn-list { margin-top: 12px; padding: 10px 12px; background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 9px; font-size: 12px; color: var(--ink); }
+  .warn-list strong { color: var(--warning); display: block; margin-bottom: 4px; font-size: 12px; }
+  .warn-list ul { margin: 0; padding-left: 18px; }
+
+  /* ---------- Summary ---------- */
+  .summary-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 6px; }
+  .summary-avg { font-size: 12px; color: var(--ink-soft); }
+  .summary-avg b { color: var(--ink); font-variant-numeric: tabular-nums; }
+  .summary-grid { display: flex; flex-direction: column; gap: 9px; }
+  .summary-row { display: grid; grid-template-columns: 132px 1fr 34px; align-items: center; gap: 10px; }
+  .summary-id { min-width: 0; display: flex; flex-direction: column; line-height: 1.25; }
+  .summary-role { font-size: 10px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+  .summary-name { font-size: 12.5px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .summary-track { background: var(--surface-3); border-radius: 999px; height: 9px; overflow: hidden; }
+  .summary-fill { height: 100%; border-radius: 999px; background: var(--success); }
+  .summary-fill.warn { background: var(--warning); }
+  .summary-count { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
+  /* ---------- Schedule ---------- */
+  .role-schedule-section + .role-schedule-section { margin-top: 22px; }
+  .role-section-title {
+    font-family: var(--font-display);
+    font-size: 15px; font-weight: 600; letter-spacing: 0.02em;
+    margin: 0 0 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .role-section-title::before {
+    content: ''; width: 9px; height: 9px; border-radius: 3px; background: var(--accent); flex-shrink: 0;
+  }
+  .schedule-scroll { overflow-x: auto; }
+  .week-block { margin-bottom: 16px; }
+  .week-block:last-child { margin-bottom: 0; }
+  .week-label {
+    font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+    color: var(--ink-soft); margin-bottom: 8px; text-transform: uppercase;
+  }
+  .week-grid { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 8px; min-width: 780px; }
+  .day-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .day-cell-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+  .day-cell-date { font-family: var(--font-display); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .day-cell-date span { color: var(--ink-soft); font-weight: 500; }
+  .shortage-badge { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-soft); border-radius: 999px; padding: 2px 7px; }
+  .select-wrap { position: relative; }
+  .select-wrap::after {
+    content: ''; position: absolute; right: 11px; top: 50%;
+    width: 6px; height: 6px; transform: translateY(-70%) rotate(45deg);
+    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
+    pointer-events: none;
+  }
+  select.slot-select {
+    appearance: none; -webkit-appearance: none; width: 100%;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink);
+  }
+  select.slot-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  select.slot-select.filled { background: var(--accent-soft); border-color: var(--accent); }
+  select.slot-select.empty-slot { border-style: dashed; border-color: var(--warning); background: var(--warning-soft); color: var(--warning); }
+
+  .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
+  footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .no-print { display: none !important; }
+    .layout { grid-template-columns: 1fr; }
+    .panel { box-shadow: none; border-color: #ccc; }
+    .week-grid { min-width: 0; }
+    select.slot-select { border-color: #999; background: #fff !important; color: #000 !important; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-header">
+    <div class="brand">
+      <svg class="brand-mark" width="40" height="40" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="1" y="1" width="38" height="38" rx="9" fill="var(--accent-soft)"/>
+        <path d="M8 26L16 26" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"/>
+        <path d="M20 26L28 26" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-dasharray="1 5"/>
+        <path d="M8 26V17.5C8 16.7 8.6 16 9.5 16H21.5C22.3 16 23 16.7 23 17.5V26" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M23 19H27.5L31 22.5V26H23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="13.5" cy="27.5" r="2.3" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8"/>
+        <circle cx="27" cy="27.5" r="2.3" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.8"/>
+      </svg>
+      <div>
+        <p class="eyebrow">株式会社ファミット</p>
+        <h1 class="app-title">ファミットシフト</h1>
+      </div>
+    </div>
+    <div class="header-actions no-print">
+      <button class="btn" id="printBtn" type="button">🖨 印刷する</button>
+    </div>
+  </header>
+
+  <datalist id="roleOptions">
+    <option value="配送1"></option>
+    <option value="配送2"></option>
+    <option value="倉庫整理"></option>
+  </datalist>
+
+  <div class="layout">
+    <!-- LEFT: settings -->
+    <div class="settings-col no-print">
+      <section class="panel" id="employeePanel">
+        <h2><span class="panel-num">1</span>従業員・役割・出勤条件</h2>
+        <p class="panel-sub">氏名、役割(配送1/配送2/倉庫整理など)、出勤できる曜日を設定します。</p>
+        <div id="employeeRows"></div>
+        <button class="btn add-emp-btn" id="addEmpBtn" type="button">＋ 従業員を追加</button>
+        <p class="panel-hint">「週上限」を5にすると、日曜と合わせて週休二日になります。出勤できる曜日が5日以下の人(アルバイトなど)は上限を空欄のままで構いません。</p>
+      </section>
+
+      <section class="panel" id="requiredPanel">
+        <h2><span class="panel-num">2</span>役割ごとの曜日別必要人数</h2>
+        <p class="panel-sub">役割ごとに、その曜日の配送・作業に必要な人数を設定します。</p>
+        <div id="requiredByRole"></div>
+      </section>
+
+      <section class="panel" id="periodPanel">
+        <h2><span class="panel-num">3</span>期間を決めて生成</h2>
+        <p class="panel-sub">開始日と週数を指定し、シフトを役割ごとに均等に割り振ります。</p>
+        <div class="period-row">
+          <div class="field">
+            <label for="startDate">開始日(月曜)</label>
+            <input type="date" id="startDate">
+          </div>
+          <div class="field">
+            <label for="weeksInput">週数</label>
+            <input type="number" id="weeksInput" min="1" max="12" step="1">
+          </div>
+        </div>
+        <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
+        <div class="warn-list" id="warnList" hidden></div>
+      </section>
+    </div>
+
+    <!-- RIGHT: summary + schedule -->
+    <div class="results-col">
+      <section class="panel" id="summaryPanel">
+        <div class="summary-head">
+          <h2 style="margin:0;">担当回数バランス</h2>
+          <span class="summary-avg">全体平均 <b id="avgCount">–</b> 回 / 人</span>
+        </div>
+        <div class="summary-grid" id="summaryGrid"></div>
+      </section>
+
+      <section class="panel" id="schedulePanel" style="margin-top:18px;">
+        <h2 style="margin-bottom:14px;">勤務表</h2>
+        <div id="scheduleContainer"></div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="note">株式会社ファミット 配送シフト管理ツール ・ データはこのブラウザ内にのみ保存されます</footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STORAGE_KEY = 'famit-shift-v2';
+  var ROLE_MIN_ONE = {'配送1': true};
+  var DAYS = [
+    {key:'mon', label:'月'},
+    {key:'tue', label:'火'},
+    {key:'wed', label:'水'},
+    {key:'thu', label:'木'},
+    {key:'fri', label:'金'},
+    {key:'sat', label:'土'}
+  ];
+
+  function uid(){ return 'e' + Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function pad(n){ return n < 10 ? '0'+n : ''+n; }
+  function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
+  function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
+  function fromISO(iso){ var p = iso.split('-'); return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10)); }
+
+  function getDefaultMonday(){
+    var d = new Date();
+    var day = d.getDay();
+    var add = (8 - day) % 7;
+    if (day === 1) add = 0;
+    return toISO(addDays(d, add));
+  }
+
+  function shuffle(arr){
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  function mkEmp(name, role, avail, weeklyMax, notes){
+    return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || ''};
+  }
+
+  function emptyRequired(){ return {mon:0, tue:0, wed:0, thu:0, fri:0, sat:0}; }
+
+  function defaultState(){
+    var employees = [
+      mkEmp('安井', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('西田', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('鈴木', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('藤村', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('坂本', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('漢那', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
+      mkEmp('藤原', '配送2', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
+      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
+    ];
+    var requiredByRole = {
+      '配送1': {mon:3, tue:3, wed:3, thu:2, fri:2, sat:2},
+      '配送2': {mon:2, tue:2, wed:2, thu:2, fri:2, sat:2},
+      '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0}
+    };
+    var period = {start: getDefaultMonday(), weeks: 2};
+    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: []};
+    var gen = generateAll(state.employees, state.requiredByRole, state.period.start, state.period.weeks);
+    state.assignmentsByRole = gen.assignmentsByRole;
+    state.warnings = gen.warnings;
+    return state;
+  }
+
+  function loadState(){
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+    return defaultState();
+  }
+  function saveState(){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
+
+  var state = loadState();
+
+  function getActiveRoles(){
+    var seen = {}; var roles = [];
+    state.employees.forEach(function(e){
+      var r = e.role || '未設定';
+      if (!seen[r]) { seen[r] = true; roles.push(r); }
+    });
+    return roles;
+  }
+
+  function ensureRequiredForRoles(){
+    getActiveRoles().forEach(function(role){
+      if (!state.requiredByRole[role]) state.requiredByRole[role] = emptyRequired();
+      if (ROLE_MIN_ONE[role]) {
+        var req = state.requiredByRole[role];
+        DAYS.forEach(function(day){ req[day.key] = Math.max(1, req[day.key]); });
+      }
+    });
+  }
+
+  // ---------- generation algorithm ----------
+  function generateForRole(employees, required, startISO, weeks, guaranteeMin){
+    var assignments = {};
+    var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
+    var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
+    var warnings = [];
+    var cur = fromISO(startISO);
+    var dayIndex = 0;
+
+    for (var w = 0; w < weeks; w++) {
+      var weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; });
+      for (var d = 0; d < 6; d++) {
+        var dayKey = DAYS[d].key;
+        var iso = toISO(cur);
+        var need = required[dayKey] || 0;
+
+        var candidates = employees.filter(function(e){
+          return e.avail[dayKey] && (e.weeklyMax == null || weeklyCount[e.id] < e.weeklyMax);
+        });
+        candidates = shuffle(candidates);
+        candidates.sort(function(a, b){
+          return (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
+        });
+
+        var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
+
+        if (guaranteeMin && need >= 1 && chosen.length === 0) {
+          var fallback = employees.filter(function(e){ return e.avail[dayKey]; });
+          fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
+          if (fallback.length > 0) chosen.push(fallback[0].id);
+        }
+
+        while (chosen.length < need) chosen.push(null);
+
+        assignments[iso] = chosen;
+        chosen.forEach(function(id){
+          if (id) { totalCount[id]++; weeklyCount[id]++; lastIndex[id] = dayIndex; }
+        });
+        if (chosen.indexOf(null) !== -1) {
+          warnings.push({date: iso, dayLabel: DAYS[d].label, need: need, filled: chosen.filter(Boolean).length});
+        }
+        dayIndex++;
+        cur = addDays(cur, 1);
+      }
+    }
+    return {assignments: assignments, warnings: warnings};
+  }
+
+  function generateAll(employees, requiredByRole, startISO, weeks){
+    var roles = Object.keys(requiredByRole);
+    var assignmentsByRole = {};
+    var warnings = [];
+    roles.forEach(function(role){
+      var roleEmployees = employees.filter(function(e){ return (e.role || '未設定') === role; });
+      var result = generateForRole(roleEmployees, requiredByRole[role], startISO, weeks, !!ROLE_MIN_ONE[role]);
+      assignmentsByRole[role] = result.assignments;
+      result.warnings.forEach(function(w){ w.role = role; warnings.push(w); });
+    });
+    return {assignmentsByRole: assignmentsByRole, warnings: warnings};
+  }
+
+  function computeCounts(){
+    var counts = {};
+    state.employees.forEach(function(e){ counts[e.id] = 0; });
+    Object.keys(state.assignmentsByRole).forEach(function(role){
+      var assignments = state.assignmentsByRole[role];
+      Object.keys(assignments).forEach(function(iso){
+        assignments[iso].forEach(function(id){
+          if (id && counts.hasOwnProperty(id)) counts[id]++;
+        });
+      });
+    });
+    return counts;
+  }
+
+  function empById(id){
+    for (var i = 0; i < state.employees.length; i++) if (state.employees[i].id === id) return state.employees[i];
+    return null;
+  }
+
+  // ---------- rendering: employees ----------
+  var employeeRowsEl = document.getElementById('employeeRows');
+
+  function renderEmployees(){
+    employeeRowsEl.innerHTML = '';
+    state.employees.forEach(function(emp){
+      var row = document.createElement('div');
+      row.className = 'emp-row';
+
+      var top = document.createElement('div');
+      top.className = 'emp-row-top';
+
+      var nameInput = document.createElement('input');
+      nameInput.type = 'text';
+      nameInput.className = 'emp-name-input';
+      nameInput.value = emp.name;
+      nameInput.setAttribute('aria-label', '氏名');
+      nameInput.addEventListener('input', function(){ emp.name = nameInput.value; saveState(); });
+      nameInput.addEventListener('blur', function(){ renderSchedule(); renderSummary(); });
+
+      var roleInput = document.createElement('input');
+      roleInput.type = 'text';
+      roleInput.className = 'role-input';
+      roleInput.setAttribute('list', 'roleOptions');
+      roleInput.value = emp.role;
+      roleInput.setAttribute('aria-label', '役割');
+      roleInput.addEventListener('change', function(){
+        emp.role = roleInput.value.trim() || '未設定';
+        ensureRequiredForRoles();
+        saveState();
+        renderRequired();
+        renderSchedule();
+        renderSummary();
+      });
+
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'icon-btn';
+      delBtn.title = '削除';
+      delBtn.textContent = '✕';
+      delBtn.addEventListener('click', function(){
+        state.employees = state.employees.filter(function(e){ return e.id !== emp.id; });
+        saveState();
+        renderEmployees(); renderRequired(); renderSchedule(); renderSummary();
+      });
+
+      top.appendChild(nameInput);
+      top.appendChild(roleInput);
+      top.appendChild(delBtn);
+
+      var meta = document.createElement('div');
+      meta.className = 'emp-meta';
+
+      var toggleGroup = document.createElement('div');
+      toggleGroup.className = 'day-toggle-group';
+      DAYS.forEach(function(day){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'day-toggle' + (emp.avail[day.key] ? ' on' : '');
+        btn.textContent = day.label;
+        btn.title = emp.avail[day.key] ? day.label + '曜日: 出勤可' : day.label + '曜日: 出勤不可';
+        btn.addEventListener('click', function(){
+          emp.avail[day.key] = emp.avail[day.key] ? 0 : 1;
+          saveState();
+          btn.classList.toggle('on', !!emp.avail[day.key]);
+          btn.title = emp.avail[day.key] ? day.label + '曜日: 出勤可' : day.label + '曜日: 出勤不可';
+        });
+        toggleGroup.appendChild(btn);
+      });
+
+      var maxWrap = document.createElement('div');
+      maxWrap.className = 'max-input-wrap';
+      var maxLabel = document.createElement('label');
+      maxLabel.textContent = '週上限';
+      var maxInput = document.createElement('input');
+      maxInput.type = 'number';
+      maxInput.className = 'max-input';
+      maxInput.min = '0';
+      maxInput.placeholder = '–';
+      if (emp.weeklyMax != null) maxInput.value = emp.weeklyMax;
+      maxInput.addEventListener('input', function(){
+        emp.weeklyMax = maxInput.value === '' ? null : Math.max(0, parseInt(maxInput.value, 10) || 0);
+        saveState();
+      });
+      maxWrap.appendChild(maxLabel);
+      maxWrap.appendChild(maxInput);
+
+      meta.appendChild(toggleGroup);
+      meta.appendChild(maxWrap);
+
+      var notesInput = document.createElement('input');
+      notesInput.type = 'text';
+      notesInput.className = 'notes-input';
+      notesInput.placeholder = '備考(任意)';
+      notesInput.value = emp.notes || '';
+      notesInput.addEventListener('input', function(){ emp.notes = notesInput.value; saveState(); });
+
+      row.appendChild(top);
+      row.appendChild(meta);
+      row.appendChild(notesInput);
+      employeeRowsEl.appendChild(row);
+    });
+  }
+
+  document.getElementById('addEmpBtn').addEventListener('click', function(){
+    var emp = mkEmp('新しい従業員', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, '');
+    state.employees.push(emp);
+    ensureRequiredForRoles();
+    saveState();
+    renderEmployees(); renderRequired();
+    var inputs = employeeRowsEl.querySelectorAll('.emp-name-input');
+    var last = inputs[inputs.length - 1];
+    if (last) { last.focus(); last.select(); }
+  });
+
+  // ---------- rendering: required headcount (per role) ----------
+  var requiredByRoleEl = document.getElementById('requiredByRole');
+  function renderRequired(){
+    ensureRequiredForRoles();
+    requiredByRoleEl.innerHTML = '';
+    var roles = getActiveRoles();
+    if (roles.length === 0) {
+      var empty = document.createElement('p');
+      empty.className = 'panel-sub';
+      empty.style.margin = '0';
+      empty.textContent = '従業員を追加すると、ここに役割ごとの設定が表示されます。';
+      requiredByRoleEl.appendChild(empty);
+      return;
+    }
+    roles.forEach(function(role){
+      var block = document.createElement('div');
+      block.className = 'role-required-block';
+      var title = document.createElement('p');
+      title.className = 'role-required-title';
+      title.textContent = role + (ROLE_MIN_ONE[role] ? '(常に1人以上配置)' : '');
+      block.appendChild(title);
+
+      var floor = ROLE_MIN_ONE[role] ? 1 : 0;
+      var grid = document.createElement('div');
+      grid.className = 'req-grid';
+      DAYS.forEach(function(day){
+        var cell = document.createElement('div');
+        cell.className = 'req-cell';
+        var label = document.createElement('span');
+        label.className = 'req-day';
+        label.textContent = day.label;
+        var input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'req-input';
+        input.min = String(floor);
+        input.value = Math.max(floor, state.requiredByRole[role][day.key]);
+        input.addEventListener('input', function(){
+          state.requiredByRole[role][day.key] = Math.max(floor, parseInt(input.value, 10) || floor);
+          if (parseInt(input.value, 10) < floor) input.value = floor;
+          saveState();
+        });
+        cell.appendChild(label);
+        cell.appendChild(input);
+        grid.appendChild(cell);
+      });
+      block.appendChild(grid);
+      requiredByRoleEl.appendChild(block);
+    });
+  }
+
+  // ---------- period form ----------
+  var startDateEl = document.getElementById('startDate');
+  var weeksInputEl = document.getElementById('weeksInput');
+  function renderPeriodForm(){
+    startDateEl.value = state.period.start;
+    weeksInputEl.value = state.period.weeks;
+  }
+  startDateEl.addEventListener('change', function(){ state.period.start = startDateEl.value; saveState(); });
+  weeksInputEl.addEventListener('change', function(){
+    state.period.weeks = Math.max(1, Math.min(12, parseInt(weeksInputEl.value, 10) || 1));
+    weeksInputEl.value = state.period.weeks;
+    saveState();
+  });
+
+  document.getElementById('generateBtn').addEventListener('click', function(){
+    if (state.employees.length === 0) { alert('従業員を1人以上追加してください。'); return; }
+    ensureRequiredForRoles();
+    var gen = generateAll(state.employees, state.requiredByRole, state.period.start, state.period.weeks);
+    state.assignmentsByRole = gen.assignmentsByRole;
+    state.warnings = gen.warnings;
+    saveState();
+    renderSchedule();
+    renderSummary();
+    renderWarnings();
+  });
+
+  function renderWarnings(){
+    var box = document.getElementById('warnList');
+    if (!state.warnings || state.warnings.length === 0) { box.hidden = true; box.innerHTML = ''; return; }
+    box.hidden = false;
+    var items = state.warnings.slice(0, 8).map(function(w){
+      var d = fromISO(w.date);
+      return '<li>' + w.role + ' ・ ' + (d.getMonth()+1) + '/' + d.getDate() + '(' + w.dayLabel + ')：必要' + w.need + '人に対し' + w.filled + '人しか配置できませんでした</li>';
+    }).join('');
+    var more = state.warnings.length > 8 ? '<li>他 ' + (state.warnings.length - 8) + ' 件…</li>' : '';
+    box.innerHTML = '<strong>⚠ 出勤可能な人数が不足している日があります</strong><ul>' + items + more + '</ul>';
+  }
+
+  // ---------- schedule rendering ----------
+  var scheduleContainerEl = document.getElementById('scheduleContainer');
+
+  function buildWeeksInto(container, role, assignments){
+    var dates = Object.keys(assignments).sort();
+    if (dates.length === 0) return false;
+
+    for (var i = 0; i < dates.length; i += 6) {
+      var weekDates = dates.slice(i, i + 6);
+      var block = document.createElement('div');
+      block.className = 'week-block';
+
+      var first = fromISO(weekDates[0]);
+      var last = fromISO(weekDates[weekDates.length - 1]);
+      var label = document.createElement('div');
+      label.className = 'week-label';
+      label.textContent = '第' + (i/6 + 1) + '週　' + (first.getMonth()+1) + '/' + first.getDate() + '〜' + (last.getMonth()+1) + '/' + last.getDate();
+      block.appendChild(label);
+
+      var grid = document.createElement('div');
+      grid.className = 'week-grid';
+
+      weekDates.forEach(function(iso, idx){
+        var d = fromISO(iso);
+        var dayDef = DAYS[idx % 6];
+        var slots = assignments[iso] || [];
+        var required = slots.length;
+        var filled = slots.filter(Boolean).length;
+
+        var cell = document.createElement('div');
+        cell.className = 'day-cell';
+
+        var head = document.createElement('div');
+        head.className = 'day-cell-head';
+        var dateEl = document.createElement('span');
+        dateEl.className = 'day-cell-date';
+        dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + ')</span>';
+        head.appendChild(dateEl);
+        if (filled < required) {
+          var badge = document.createElement('span');
+          badge.className = 'shortage-badge';
+          badge.textContent = '不足';
+          head.appendChild(badge);
+        }
+        cell.appendChild(head);
+
+        var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
+          .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
+
+        slots.forEach(function(assignedId, slotIndex){
+          var wrap = document.createElement('div');
+          wrap.className = 'select-wrap';
+          var sel = document.createElement('select');
+          sel.className = 'slot-select' + (assignedId ? ' filled' : ' empty-slot');
+
+          var noneOpt = document.createElement('option');
+          noneOpt.value = '';
+          noneOpt.textContent = '— 空き —';
+          sel.appendChild(noneOpt);
+
+          var optionEmps = availableForDay.slice();
+          if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
+            var cur = empById(assignedId);
+            if (cur) optionEmps.push(cur);
+          }
+          optionEmps.forEach(function(e){
+            var opt = document.createElement('option');
+            opt.value = e.id;
+            opt.textContent = e.name;
+            if (e.id === assignedId) opt.selected = true;
+            sel.appendChild(opt);
+          });
+
+          sel.addEventListener('change', function(){
+            assignments[iso][slotIndex] = sel.value || null;
+            saveState();
+            renderSchedule();
+            renderSummary();
+          });
+
+          wrap.appendChild(sel);
+          cell.appendChild(wrap);
+        });
+
+        if (slots.length === 0) {
+          var noneNeeded = document.createElement('p');
+          noneNeeded.style.cssText = 'font-size:11.5px;color:var(--ink-faint);margin:2px 0 0;';
+          noneNeeded.textContent = '配置なし';
+          cell.appendChild(noneNeeded);
+        }
+
+        grid.appendChild(cell);
+      });
+
+      block.appendChild(grid);
+      container.appendChild(block);
+    }
+    return true;
+  }
+
+  function renderSchedule(){
+    scheduleContainerEl.innerHTML = '';
+    var roles = getActiveRoles();
+    if (roles.length === 0 || Object.keys(state.assignmentsByRole).length === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'まだシフトが生成されていません。左側の「シフトを自動生成」を押してください。';
+      scheduleContainerEl.appendChild(empty);
+      return;
+    }
+    var any = false;
+    roles.forEach(function(role){
+      var section = document.createElement('div');
+      section.className = 'role-schedule-section';
+      var h = document.createElement('h3');
+      h.className = 'role-section-title';
+      h.textContent = role;
+      section.appendChild(h);
+      var scroll = document.createElement('div');
+      scroll.className = 'schedule-scroll';
+      var had = buildWeeksInto(scroll, role, state.assignmentsByRole[role] || {});
+      section.appendChild(scroll);
+      scheduleContainerEl.appendChild(section);
+      any = any || had;
+    });
+    if (!any) {
+      scheduleContainerEl.innerHTML = '';
+      var empty2 = document.createElement('div');
+      empty2.className = 'empty-state';
+      empty2.textContent = 'まだシフトが生成されていません。左側の「シフトを自動生成」を押してください。';
+      scheduleContainerEl.appendChild(empty2);
+    }
+  }
+
+  function renderSummary(){
+    var grid = document.getElementById('summaryGrid');
+    var avgEl = document.getElementById('avgCount');
+    grid.innerHTML = '';
+
+    if (state.employees.length === 0) { avgEl.textContent = '–'; return; }
+
+    var counts = computeCounts();
+    var values = state.employees.map(function(e){ return counts[e.id] || 0; });
+    var total = values.reduce(function(a,b){ return a+b; }, 0);
+    var avg = total / state.employees.length;
+    avgEl.textContent = avg.toFixed(1);
+    var max = Math.max.apply(null, values.concat([1]));
+
+    var roles = getActiveRoles();
+    var sorted = state.employees.slice().sort(function(a, b){
+      var ra = roles.indexOf(a.role || '未設定');
+      var rb = roles.indexOf(b.role || '未設定');
+      if (ra !== rb) return ra - rb;
+      return (counts[b.id]||0) - (counts[a.id]||0);
+    });
+
+    sorted.forEach(function(e){
+      var c = counts[e.id] || 0;
+      var row = document.createElement('div');
+      row.className = 'summary-row';
+
+      var idBox = document.createElement('div');
+      idBox.className = 'summary-id';
+      var roleTag = document.createElement('span');
+      roleTag.className = 'summary-role';
+      roleTag.textContent = e.role || '未設定';
+      var name = document.createElement('span');
+      name.className = 'summary-name';
+      name.textContent = e.name;
+      name.title = e.name;
+      idBox.appendChild(roleTag);
+      idBox.appendChild(name);
+
+      var track = document.createElement('div');
+      track.className = 'summary-track';
+      var fill = document.createElement('div');
+      var deviation = Math.abs(c - avg);
+      fill.className = 'summary-fill' + (deviation > 1 ? ' warn' : '');
+      fill.style.width = (max > 0 ? (c / max) * 100 : 0) + '%';
+      track.appendChild(fill);
+
+      var countEl = document.createElement('span');
+      countEl.className = 'summary-count';
+      countEl.textContent = c;
+
+      row.appendChild(idBox);
+      row.appendChild(track);
+      row.appendChild(countEl);
+      grid.appendChild(row);
+    });
+  }
+
+  document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  // ---------- init ----------
+  ensureRequiredForRoles();
+  renderEmployees();
+  renderRequired();
+  renderPeriodForm();
+  renderSchedule();
+  renderSummary();
+  renderWarnings();
+})();
+</script>
+</body>
+</html>
