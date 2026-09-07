@@ -316,11 +316,6 @@
   .summary-count { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 
   /* ---------- Schedule ---------- */
-  .route-subgroup + .route-subgroup { margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--line); }
-  .route-sublabel-row { display: flex; align-items: center; justify-content: flex-end; min-height: 0; }
-  .role-legend { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
-  .role-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--ink-soft); }
-  .role-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
   .schedule-scroll { overflow-x: auto; }
   .week-block { margin-bottom: 16px; }
   .week-block:last-child { margin-bottom: 0; }
@@ -338,17 +333,15 @@
   .select-wrap::after {
     content: ''; position: absolute; right: 11px; top: 50%;
     width: 6px; height: 6px; transform: translateY(-70%) rotate(45deg);
-    border-right: 2px solid var(--caret-color, var(--ink-faint)); border-bottom: 2px solid var(--caret-color, var(--ink-faint));
+    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
     pointer-events: none;
   }
   select.slot-select {
     appearance: none; -webkit-appearance: none; width: 100%;
-    background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
-    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink-faint);
+    background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink);
   }
   select.slot-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  select.slot-select.filled { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
-  select.slot-select.empty-slot { border-style: dashed; border-color: var(--rest); background: var(--rest-soft); color: var(--rest); font-weight: 500; }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -420,10 +413,6 @@
     <button class="mode-tab" data-mode="employee" type="button">社員</button>
   </div>
 
-  <datalist id="roleOptions">
-    <option value="配送"></option>
-    <option value="倉庫整理"></option>
-  </datalist>
 
   <div id="adminView">
     <div class="layout">
@@ -542,23 +531,6 @@
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
   var ROLE_MIN_ONE = {'配送': true};
-  var ROLE_PALETTE = ['#DD6A2C', '#8B5FBF', '#1F8A82', '#C0392B', '#B8860B'];
-  var DISPLAY_GROUP_MAP = {};
-  function displayGroupOf(role){ return DISPLAY_GROUP_MAP[role] || role; }
-  function getDisplayGroupKeys(){
-    var seen = {}; var keys = [];
-    getActiveRoles().forEach(function(role){
-      var g = displayGroupOf(role);
-      if (!seen[g]) { seen[g] = true; keys.push(g); }
-    });
-    return keys;
-  }
-  function groupColor(groupKey){
-    var keys = getDisplayGroupKeys();
-    var idx = keys.indexOf(groupKey);
-    if (idx === -1) idx = 0;
-    return ROLE_PALETTE[idx % ROLE_PALETTE.length];
-  }
   var DAYS = [
     {key:'mon', label:'月'},
     {key:'tue', label:'火'},
@@ -1029,16 +1001,33 @@
       nameInput.addEventListener('input', function(){ emp.name = nameInput.value; saveStateDebounced(); });
       nameInput.addEventListener('blur', function(){ saveState(); renderSchedule(); renderSummary(); });
 
-      var roleInput = document.createElement('input');
-      roleInput.type = 'text';
+      var roleInput = document.createElement('select');
       roleInput.className = 'role-input';
-      roleInput.setAttribute('list', 'roleOptions');
-      roleInput.value = emp.role;
       roleInput.setAttribute('aria-label', '役割');
+      var existingRoles = getActiveRoles();
+      if (existingRoles.indexOf(emp.role) === -1) existingRoles.push(emp.role);
+      existingRoles.forEach(function(r){
+        var opt = document.createElement('option');
+        opt.value = r;
+        opt.textContent = r;
+        if (r === emp.role) opt.selected = true;
+        roleInput.appendChild(opt);
+      });
+      var newRoleOpt = document.createElement('option');
+      newRoleOpt.value = '__new__';
+      newRoleOpt.textContent = '+ 新しい役割…';
+      roleInput.appendChild(newRoleOpt);
       roleInput.addEventListener('change', function(){
-        emp.role = roleInput.value.trim() || '未設定';
+        if (roleInput.value === '__new__') {
+          var newName = (prompt('新しい役割の名前を入力してください', '') || '').trim();
+          if (!newName) { roleInput.value = emp.role; return; }
+          emp.role = newName;
+        } else {
+          emp.role = roleInput.value;
+        }
         ensureRequiredForRoles();
         saveState();
+        renderEmployees();
         renderRequired();
         renderSchedule();
         renderSummary();
@@ -1276,86 +1265,60 @@
         cell.appendChild(head);
 
         var anySlots = false;
-
-        var groupKeys = [];
-        var rolesByGroup = {};
-        roles.forEach(function(role){
-          var g = displayGroupOf(role);
-          if (!rolesByGroup[g]) { rolesByGroup[g] = []; groupKeys.push(g); }
-          rolesByGroup[g].push(role);
+        var anyShort = roles.some(function(role){
+          var slots = (assignmentsByRole[role]||{})[iso] || [];
+          return slots.filter(Boolean).length < slots.length;
         });
+        if (anyShort) {
+          var badge = document.createElement('span');
+          badge.className = 'shortage-badge';
+          badge.textContent = '不足';
+          head.appendChild(badge);
+        }
 
-        groupKeys.forEach(function(groupKey){
-          var groupRoles = rolesByGroup[groupKey];
-          var hasAny = groupRoles.some(function(role){ return ((assignmentsByRole[role]||{})[iso] || []).length > 0; });
-          if (!hasAny) return;
+        roles.forEach(function(role){
+          var assignments = assignmentsByRole[role] || {};
+          var slots = assignments[iso] || [];
+          if (slots.length === 0) return;
           anySlots = true;
 
-          var sub = document.createElement('div');
-          sub.className = 'route-subgroup';
+          var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
+            .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
 
-          var anyShort = groupRoles.some(function(role){
-            var slots = (assignmentsByRole[role]||{})[iso] || [];
-            return slots.filter(Boolean).length < slots.length;
-          });
-          var subHead = document.createElement('div');
-          subHead.className = 'route-sublabel-row';
-          if (anyShort) {
-            var badge = document.createElement('span');
-            badge.className = 'shortage-badge';
-            badge.textContent = '不足';
-            subHead.appendChild(badge);
-          }
-          if (subHead.children.length) sub.appendChild(subHead);
+          slots.forEach(function(assignedId, slotIndex){
+            var wrap = document.createElement('div');
+            wrap.className = 'select-wrap';
+            var sel = document.createElement('select');
+            sel.className = 'slot-select';
 
-          groupRoles.forEach(function(role){
-            var assignments = assignmentsByRole[role] || {};
-            var slots = assignments[iso] || [];
-            if (slots.length === 0) return;
+            var noneOpt = document.createElement('option');
+            noneOpt.value = '';
+            noneOpt.textContent = '— 空き —';
+            sel.appendChild(noneOpt);
 
-            var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
-              .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
-
-            slots.forEach(function(assignedId, slotIndex){
-              var wrap = document.createElement('div');
-              wrap.className = 'select-wrap';
-              if (assignedId) wrap.style.setProperty('--caret-color', 'var(--accent-ink)');
-              var sel = document.createElement('select');
-              sel.className = 'slot-select' + (assignedId ? ' filled' : ' empty-slot');
-              sel.style.borderLeftWidth = '4px';
-              sel.style.borderLeftColor = groupColor(groupKey);
-
-              var noneOpt = document.createElement('option');
-              noneOpt.value = '';
-              noneOpt.textContent = '— 空き —';
-              sel.appendChild(noneOpt);
-
-              var optionEmps = availableForDay.slice();
-              if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
-                var cur = empById(assignedId);
-                if (cur) optionEmps.push(cur);
-              }
-              optionEmps.forEach(function(e){
-                var opt = document.createElement('option');
-                opt.value = e.id;
-                opt.textContent = e.name;
-                if (e.id === assignedId) opt.selected = true;
-                sel.appendChild(opt);
-              });
-
-              sel.addEventListener('change', function(){
-                assignments[iso][slotIndex] = sel.value || null;
-                saveState();
-                renderSchedule();
-                renderSummary();
-              });
-
-              wrap.appendChild(sel);
-              sub.appendChild(wrap);
+            var optionEmps = availableForDay.slice();
+            if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
+              var cur = empById(assignedId);
+              if (cur) optionEmps.push(cur);
+            }
+            optionEmps.forEach(function(e){
+              var opt = document.createElement('option');
+              opt.value = e.id;
+              opt.textContent = e.name;
+              if (e.id === assignedId) opt.selected = true;
+              sel.appendChild(opt);
             });
-          });
 
-          cell.appendChild(sub);
+            sel.addEventListener('change', function(){
+              assignments[iso][slotIndex] = sel.value || null;
+              saveState();
+              renderSchedule();
+              renderSummary();
+            });
+
+            wrap.appendChild(sel);
+            cell.appendChild(wrap);
+          });
         });
 
         if (!anySlots) {
@@ -1384,22 +1347,6 @@
       scheduleContainerEl.appendChild(empty);
       return;
     }
-
-    var legend = document.createElement('div');
-    legend.className = 'role-legend';
-    getDisplayGroupKeys().forEach(function(groupKey){
-      var item = document.createElement('span');
-      item.className = 'role-legend-item';
-      var dot = document.createElement('span');
-      dot.className = 'role-legend-dot';
-      dot.style.background = groupColor(groupKey);
-      var text = document.createElement('span');
-      text.textContent = groupKey;
-      item.appendChild(dot);
-      item.appendChild(text);
-      legend.appendChild(item);
-    });
-    scheduleContainerEl.appendChild(legend);
 
     var scroll = document.createElement('div');
     scroll.className = 'schedule-scroll';
@@ -1586,14 +1533,10 @@
       var dateBox = document.createElement('div');
       dateBox.className = 'shift-card-date';
       dateBox.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + '<span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
-      var dot = document.createElement('span');
-      dot.className = 'shift-card-dot';
-      dot.style.background = groupColor(displayGroupOf(item.role));
       var roleLabel = document.createElement('span');
       roleLabel.className = 'shift-card-role';
-      roleLabel.textContent = displayGroupOf(item.role);
+      roleLabel.textContent = item.role;
       card.appendChild(dateBox);
-      card.appendChild(dot);
       card.appendChild(roleLabel);
       list.appendChild(card);
     });
