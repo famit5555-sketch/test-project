@@ -332,17 +332,17 @@
   .select-wrap::after {
     content: ''; position: absolute; right: 11px; top: 50%;
     width: 6px; height: 6px; transform: translateY(-70%) rotate(45deg);
-    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
+    border-right: 2px solid var(--caret-color, var(--ink-faint)); border-bottom: 2px solid var(--caret-color, var(--ink-faint));
     pointer-events: none;
   }
   select.slot-select {
     appearance: none; -webkit-appearance: none; width: 100%;
     background: var(--surface); border: 1px solid var(--line); border-radius: 999px;
-    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink);
+    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink-faint);
   }
   select.slot-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  select.slot-select.filled { background: var(--accent-soft); border-color: var(--accent); }
-  select.slot-select.empty-slot { border-style: dashed; border-color: var(--warning); background: var(--warning-soft); color: var(--warning); }
+  select.slot-select.filled { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+  select.slot-select.empty-slot { border-style: dashed; border-color: var(--line); background: var(--surface-2); color: var(--ink-faint); font-weight: 500; }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -664,7 +664,7 @@
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
     ];
     var requiredByRole = {
-      '配送1': {mon:3, tue:3, wed:2, thu:2, fri:2, sat:3, holiday:2},
+      '配送1': {mon:3, tue:3, wed:3, thu:2, fri:2, sat:3, holiday:2},
       '配送2': {mon:3, tue:3, wed:3, thu:3, fri:3, sat:1, holiday:1},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0}
     };
@@ -931,6 +931,17 @@
           var fallback = employees.filter(function(e){ return e.avail[dayKey]; });
           fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
           if (fallback.length > 0) chosen.push(fallback[0].id);
+        }
+
+        // Still short of `need`? Let anyone who wants extra shifts cover
+        // the gap even past their own weekly cap, before giving up.
+        while (chosen.length < need) {
+          var extra = employees.filter(function(e){
+            return e.priorityExtra && e.avail[dayKey] && chosen.indexOf(e.id) === -1;
+          });
+          extra = shuffle(extra).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
+          if (extra.length === 0) break;
+          chosen.push(extra[0].id);
         }
 
         while (chosen.length < need) chosen.push(null);
@@ -1303,6 +1314,7 @@
             slots.forEach(function(assignedId, slotIndex){
               var wrap = document.createElement('div');
               wrap.className = 'select-wrap';
+              if (assignedId) wrap.style.setProperty('--caret-color', 'var(--accent-ink)');
               var sel = document.createElement('select');
               sel.className = 'slot-select' + (assignedId ? ' filled' : ' empty-slot');
               sel.style.borderLeftWidth = '4px';
