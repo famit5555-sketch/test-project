@@ -22,8 +22,8 @@
     --success-soft: #DFF3E6;
     --warning: #A66A12;
     --warning-soft: #FBEBD3;
-    --rest: #3573C7;
-    --rest-soft: #DCE8F7;
+    --danger: #C0392B;
+    --danger-soft: #FBE2DE;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -46,8 +46,8 @@
       --success-soft: #163527;
       --warning: #E3A93F;
       --warning-soft: #3A2C10;
-      --rest: #6FA8E8;
-      --rest-soft: #1B2E44;
+      --danger: #E8695C;
+      --danger-soft: #3A1D18;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -67,8 +67,8 @@
     --success-soft: #163527;
     --warning: #E3A93F;
     --warning-soft: #3A2C10;
-    --rest: #6FA8E8;
-    --rest-soft: #1B2E44;
+    --danger: #E8695C;
+    --danger-soft: #3A1D18;
     --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
   }
 
@@ -329,19 +329,19 @@
   .day-cell-date { font-family: var(--font-display); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .day-cell-date span { color: var(--ink-soft); font-weight: 500; }
   .shortage-badge { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-soft); border-radius: 999px; padding: 2px 7px; }
-  .select-wrap { position: relative; }
-  .select-wrap::after {
-    content: ''; position: absolute; right: 11px; top: 50%;
-    width: 6px; height: 6px; transform: translateY(-70%) rotate(45deg);
-    border-right: 2px solid var(--ink-faint); border-bottom: 2px solid var(--ink-faint);
-    pointer-events: none;
+  .attend-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--surface); padding: 7px 10px; font-family: var(--font-body);
+    text-align: left; cursor: pointer;
   }
-  select.slot-select {
-    appearance: none; -webkit-appearance: none; width: 100%;
-    background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
-    padding: 7px 26px 7px 12px; font: 600 12.5px/1.2 var(--font-body); color: var(--ink);
-  }
-  select.slot-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .attend-row:hover { filter: brightness(0.98); }
+  .attend-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .attend-name { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+  .attend-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
+  .attend-row.off { background: var(--danger-soft); border-color: var(--danger); }
+  .attend-row.off .attend-name { color: var(--danger); }
+  .attend-row.off .attend-status { color: var(--danger); }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -379,7 +379,9 @@
     .layout { grid-template-columns: 1fr; }
     .panel { box-shadow: none; border-color: #ccc; }
     .week-grid { min-width: 0; }
-    select.slot-select { border-color: #999; background: #fff !important; color: #000 !important; }
+    .attend-row { border-color: #999; background: #fff !important; color: #000 !important; }
+    .attend-row.off { background: #fff !important; border-color: #c0392b !important; }
+    .attend-row.off .attend-name, .attend-row.off .attend-status { color: #c0392b !important; }
   }
 </style>
 </head>
@@ -1224,6 +1226,23 @@
   // ---------- schedule rendering ----------
   var scheduleContainerEl = document.getElementById('scheduleContainer');
 
+  function toggleAttendance(emp, iso){
+    if (!state.assignmentsByRole[emp.role]) state.assignmentsByRole[emp.role] = {};
+    var arr = state.assignmentsByRole[emp.role][iso];
+    if (!arr) { arr = []; state.assignmentsByRole[emp.role][iso] = arr; }
+    var idx = arr.indexOf(emp.id);
+    if (idx !== -1) {
+      arr[idx] = null;
+    } else {
+      var nullIdx = arr.indexOf(null);
+      if (nullIdx !== -1) arr[nullIdx] = emp.id;
+      else arr.push(emp.id);
+    }
+    saveState();
+    renderSchedule();
+    renderSummary();
+  }
+
   function buildWeeksInto(container, roles, assignmentsByRole){
     var dates = [];
     roles.forEach(function(role){
@@ -1276,55 +1295,36 @@
           head.appendChild(badge);
         }
 
-        roles.forEach(function(role){
-          var assignments = assignmentsByRole[role] || {};
-          var slots = assignments[iso] || [];
-          if (slots.length === 0) return;
+        state.employees.forEach(function(emp){
           anySlots = true;
+          var arr = (assignmentsByRole[emp.role] || {})[iso];
+          var working = !!arr && arr.indexOf(emp.id) !== -1;
 
-          var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
-            .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
+          var rowBtn = document.createElement('button');
+          rowBtn.type = 'button';
+          rowBtn.className = 'attend-row' + (working ? '' : ' off');
 
-          slots.forEach(function(assignedId, slotIndex){
-            var wrap = document.createElement('div');
-            wrap.className = 'select-wrap';
-            var sel = document.createElement('select');
-            sel.className = 'slot-select';
+          var nameSpan = document.createElement('span');
+          nameSpan.className = 'attend-name';
+          nameSpan.textContent = emp.name;
+          var statusSpan = document.createElement('span');
+          statusSpan.className = 'attend-status';
+          statusSpan.textContent = working ? '出勤' : '休み';
 
-            var noneOpt = document.createElement('option');
-            noneOpt.value = '';
-            noneOpt.textContent = '— 空き —';
-            sel.appendChild(noneOpt);
-
-            var optionEmps = availableForDay.slice();
-            if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
-              var cur = empById(assignedId);
-              if (cur) optionEmps.push(cur);
-            }
-            optionEmps.forEach(function(e){
-              var opt = document.createElement('option');
-              opt.value = e.id;
-              opt.textContent = e.name;
-              if (e.id === assignedId) opt.selected = true;
-              sel.appendChild(opt);
-            });
-
-            sel.addEventListener('change', function(){
-              assignments[iso][slotIndex] = sel.value || null;
-              saveState();
-              renderSchedule();
-              renderSummary();
-            });
-
-            wrap.appendChild(sel);
-            cell.appendChild(wrap);
+          rowBtn.appendChild(nameSpan);
+          rowBtn.appendChild(statusSpan);
+          rowBtn.title = 'クリックで出勤・休みを切り替え';
+          rowBtn.addEventListener('click', function(){
+            toggleAttendance(emp, iso);
           });
+
+          cell.appendChild(rowBtn);
         });
 
         if (!anySlots) {
           var noneNeeded = document.createElement('p');
           noneNeeded.style.cssText = 'font-size:11.5px;color:var(--ink-faint);margin:2px 0 0;';
-          noneNeeded.textContent = '配置なし';
+          noneNeeded.textContent = '従業員がいません';
           cell.appendChild(noneNeeded);
         }
 
