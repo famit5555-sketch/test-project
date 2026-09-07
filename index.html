@@ -24,6 +24,8 @@
     --warning-soft: #FBEBD3;
     --danger: #C0392B;
     --danger-soft: #FBE2DE;
+    --rest: #3573C7;
+    --rest-soft: #DCE8F7;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -48,6 +50,8 @@
       --warning-soft: #3A2C10;
       --danger: #E8695C;
       --danger-soft: #3A1D18;
+      --rest: #6FA8E8;
+      --rest-soft: #1B2E44;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -69,6 +73,8 @@
     --warning-soft: #3A2C10;
     --danger: #E8695C;
     --danger-soft: #3A1D18;
+    --rest: #6FA8E8;
+    --rest-soft: #1B2E44;
     --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
   }
 
@@ -331,17 +337,17 @@
   .shortage-badge { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-soft); border-radius: 999px; padding: 2px 7px; }
   .attend-row {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    width: 100%; border: 1px solid var(--line); border-radius: 8px;
-    background: var(--surface); padding: 7px 10px; font-family: var(--font-body);
+    width: 100%; border: 1px solid var(--accent); border-radius: 8px;
+    background: var(--accent); padding: 7px 10px; font-family: var(--font-body);
     text-align: left; cursor: pointer;
   }
-  .attend-row:hover { filter: brightness(0.98); }
+  .attend-row:hover { filter: brightness(1.05); }
   .attend-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .attend-name { font-size: 12.5px; font-weight: 700; color: var(--ink); }
-  .attend-status { font-size: 11px; font-weight: 700; color: var(--ink-soft); }
-  .attend-row.off { background: var(--danger-soft); border-color: var(--danger); }
-  .attend-row.off .attend-name { color: var(--danger); }
-  .attend-row.off .attend-status { color: var(--danger); }
+  .attend-name { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); }
+  .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); }
+  .attend-row.off { background: var(--rest-soft); border-color: var(--rest); }
+  .attend-row.off .attend-name { color: var(--rest); }
+  .attend-row.off .attend-status { color: var(--rest); }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -380,8 +386,9 @@
     .panel { box-shadow: none; border-color: #ccc; }
     .week-grid { min-width: 0; }
     .attend-row { border-color: #999; background: #fff !important; color: #000 !important; }
-    .attend-row.off { background: #fff !important; border-color: #c0392b !important; }
-    .attend-row.off .attend-name, .attend-row.off .attend-status { color: #c0392b !important; }
+    .attend-row .attend-name, .attend-row .attend-status { color: #000 !important; }
+    .attend-row.off { background: #fff !important; border-color: #3573c7 !important; }
+    .attend-row.off .attend-name, .attend-row.off .attend-status { color: #3573c7 !important; }
   }
 </style>
 </head>
@@ -528,7 +535,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = 'famit-shift-v4';
+  var STORAGE_KEY = 'famit-shift-v5';
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
@@ -639,7 +646,7 @@
       mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
+      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)'),
       mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)')
     ];
