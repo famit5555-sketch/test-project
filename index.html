@@ -83,7 +83,7 @@
     justify-content: space-between;
     gap: 20px;
     flex-wrap: wrap;
-    margin-bottom: 24px;
+    margin-bottom: 18px;
   }
   .brand { display: flex; align-items: center; gap: 14px; }
   .brand-mark { flex-shrink: 0; }
@@ -125,7 +125,18 @@
   .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .btn-primary:hover { filter: brightness(1.06); background: var(--accent); }
+  .btn-danger { color: #B23A2E; }
+  .btn-sm { padding: 6px 11px; font-size: 12.5px; }
   .add-emp-btn { margin-top: 12px; width: 100%; justify-content: center; }
+
+  /* ---------- Mode tabs ---------- */
+  .mode-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+  .mode-tab {
+    padding: 8px 20px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink-soft); font-weight: 700;
+    font-size: 13px; font-family: var(--font-body);
+  }
+  .mode-tab.active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 
   /* ---------- Layout ---------- */
   .layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; align-items: start; }
@@ -268,13 +279,15 @@
 
   /* ---------- Period panel ---------- */
   .period-row { display: flex; gap: 10px; margin-bottom: 12px; }
-  .field { flex: 1; }
+  .field { flex: 1; margin-bottom: 12px; }
+  .field:last-of-type { margin-bottom: 0; }
   .field label { display: block; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 5px; font-weight: 600; }
-  .field input {
+  .field input, .field select, .field textarea {
     width: 100%; border: 1px solid var(--line); border-radius: 8px;
     background: var(--surface-2); color: var(--ink); font-size: 13.5px;
     padding: 8px 9px; font-family: var(--font-body); font-variant-numeric: tabular-nums;
   }
+  .field textarea { resize: vertical; font-variant-numeric: normal; }
   .generate-btn { width: 100%; justify-content: center; padding: 11px; font-size: 14px; }
   .warn-list { margin-top: 12px; padding: 10px 12px; background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 9px; font-size: 12px; color: var(--ink); }
   .warn-list strong { color: var(--warning); display: block; margin-bottom: 4px; font-size: 12px; }
@@ -332,6 +345,33 @@
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
 
+  /* ---------- Employee (mobile) view ---------- */
+  .employee-view { max-width: 560px; margin: 0 auto; }
+  .shift-card { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); }
+  .shift-card + .shift-card { margin-top: 8px; }
+  .shift-card-date { font-family: var(--font-display); font-weight: 600; font-size: 15px; width: 60px; flex-shrink: 0; text-align: center; font-variant-numeric: tabular-nums; }
+  .shift-card-date span { display: block; font-size: 11px; color: var(--ink-soft); font-weight: 500; font-family: var(--font-body); }
+  .shift-card-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+  .shift-card-role { font-size: 13px; font-weight: 700; color: var(--ink-soft); flex: 1; }
+
+  .request-item { padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface-2); display: flex; flex-direction: column; gap: 6px; }
+  .request-item + .request-item { margin-top: 8px; }
+  .request-item-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+  .request-item-title { font-size: 13px; font-weight: 700; }
+  .request-badge { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .request-badge.pending { background: var(--warning-soft); color: var(--warning); }
+  .request-badge.done { background: var(--success-soft); color: var(--success); }
+  .request-note { font-size: 12.5px; color: var(--ink-soft); margin: 0; }
+  .request-meta { font-size: 11px; color: var(--ink-faint); margin: 0; }
+  .request-actions { display: flex; gap: 6px; margin-top: 2px; }
+
+  .db-banner {
+    position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+    background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning);
+    padding: 9px 18px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    z-index: 1000; box-shadow: var(--shadow); max-width: 90vw; text-align: center;
+  }
+
   @media print {
     body { background: #fff; color: #000; }
     .no-print { display: none !important; }
@@ -361,10 +401,15 @@
         <h1 class="app-title">ファミットシフト</h1>
       </div>
     </div>
-    <div class="header-actions no-print">
+    <div class="header-actions no-print" id="headerActions">
       <button class="btn" id="printBtn" type="button">🖨 印刷する</button>
     </div>
   </header>
+
+  <div class="mode-tabs no-print">
+    <button class="mode-tab" data-mode="admin" type="button">管理者</button>
+    <button class="mode-tab" data-mode="employee" type="button">社員</button>
+  </div>
 
   <datalist id="roleOptions">
     <option value="配送1"></option>
@@ -372,59 +417,112 @@
     <option value="倉庫整理"></option>
   </datalist>
 
-  <div class="layout">
-    <!-- LEFT: settings -->
-    <div class="settings-col no-print">
-      <section class="panel" id="employeePanel">
-        <h2><span class="panel-num">1</span>従業員・役割・出勤条件</h2>
-        <p class="panel-sub">氏名、役割(配送1/配送2/倉庫整理など)、出勤できる曜日を設定します。</p>
-        <div id="employeeRows"></div>
-        <button class="btn add-emp-btn" id="addEmpBtn" type="button">＋ 従業員を追加</button>
-        <p class="panel-hint">「週上限」を5にすると、日曜と合わせて週休二日になります。出勤できる曜日が5日以下の人(アルバイトなど)は上限を空欄のままで構いません。</p>
-      </section>
+  <div id="adminView">
+    <div class="layout">
+      <!-- LEFT: settings -->
+      <div class="settings-col no-print">
+        <section class="panel" id="requestsAdminPanel">
+          <h2 id="requestsAdminTitle">社員からの希望</h2>
+          <p class="panel-sub">スマホから送られた休み希望・遅刻早退希望などがここに届きます。</p>
+          <div id="requestsAdminList"></div>
+        </section>
 
-      <section class="panel" id="requiredPanel">
-        <h2><span class="panel-num">2</span>役割ごとの曜日別必要人数</h2>
-        <p class="panel-sub">役割ごとに、その曜日の配送・作業に必要な人数を設定します。</p>
-        <div id="requiredByRole"></div>
-      </section>
+        <section class="panel" id="employeePanel">
+          <h2><span class="panel-num">1</span>従業員・役割・出勤条件</h2>
+          <p class="panel-sub">氏名、役割(配送1/配送2/倉庫整理など)、出勤できる曜日を設定します。</p>
+          <div id="employeeRows"></div>
+          <button class="btn add-emp-btn" id="addEmpBtn" type="button">＋ 従業員を追加</button>
+          <p class="panel-hint">「週上限」を5にすると、日曜と合わせて週休二日になります。出勤できる曜日が5日以下の人(アルバイトなど)は上限を空欄のままで構いません。</p>
+        </section>
 
-      <section class="panel" id="periodPanel">
-        <h2><span class="panel-num">3</span>期間を決めて生成</h2>
-        <p class="panel-sub">開始日と週数を指定し、シフトを役割ごとに均等に割り振ります。</p>
-        <div class="period-row">
-          <div class="field">
-            <label for="startDate">開始日(月曜)</label>
-            <input type="date" id="startDate">
+        <section class="panel" id="requiredPanel">
+          <h2><span class="panel-num">2</span>役割ごとの曜日別必要人数</h2>
+          <p class="panel-sub">役割ごとに、その曜日の配送・作業に必要な人数を設定します。数値は自由に編集できます。</p>
+          <button class="btn btn-sm" id="autoBalanceBtn" type="button" style="margin-bottom:14px;">⚖ 自動計算(全員が週5日になるように)</button>
+          <div id="requiredByRole"></div>
+        </section>
+
+        <section class="panel" id="periodPanel">
+          <h2><span class="panel-num">3</span>期間を決めて生成</h2>
+          <p class="panel-sub">開始日と週数を指定し、シフトを役割ごとに均等に割り振ります。</p>
+          <div class="period-row">
+            <div class="field">
+              <label for="startDate">開始日(月曜)</label>
+              <input type="date" id="startDate">
+            </div>
+            <div class="field">
+              <label for="weeksInput">週数</label>
+              <input type="number" id="weeksInput" min="1" max="12" step="1">
+            </div>
           </div>
-          <div class="field">
-            <label for="weeksInput">週数</label>
-            <input type="number" id="weeksInput" min="1" max="12" step="1">
+          <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
+          <div class="warn-list" id="warnList" hidden></div>
+        </section>
+      </div>
+
+      <!-- RIGHT: summary + schedule -->
+      <div class="results-col">
+        <section class="panel" id="summaryPanel">
+          <div class="summary-head">
+            <h2 style="margin:0;">担当回数バランス</h2>
+            <span class="summary-avg">全体平均 <b id="avgCount">–</b> 回 / 人</span>
           </div>
-        </div>
-        <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
-        <div class="warn-list" id="warnList" hidden></div>
-      </section>
+          <div class="summary-grid" id="summaryGrid"></div>
+        </section>
+
+        <section class="panel" id="schedulePanel" style="margin-top:18px;">
+          <h2 style="margin-bottom:14px;">勤務表</h2>
+          <div id="scheduleContainer"></div>
+        </section>
+      </div>
     </div>
+  </div>
 
-    <!-- RIGHT: summary + schedule -->
-    <div class="results-col">
-      <section class="panel" id="summaryPanel">
-        <div class="summary-head">
-          <h2 style="margin:0;">担当回数バランス</h2>
-          <span class="summary-avg">全体平均 <b id="avgCount">–</b> 回 / 人</span>
-        </div>
-        <div class="summary-grid" id="summaryGrid"></div>
+  <div id="employeeView" class="employee-view" hidden>
+    <section class="panel" id="whoAmIPanel">
+      <h2>あなたの氏名</h2>
+      <select id="whoAmISelect"></select>
+      <p class="panel-sub" style="margin:8px 0 0;">氏名を選ぶと、あなたのシフトと希望フォームが表示されます。</p>
+    </section>
+
+    <div id="employeeContent" hidden>
+      <section class="panel" id="myShiftsPanel" style="margin-top:16px;">
+        <h2>あなたのシフト</h2>
+        <div id="myShiftsList"></div>
       </section>
 
-      <section class="panel" id="schedulePanel" style="margin-top:18px;">
-        <h2 style="margin-bottom:14px;">勤務表</h2>
-        <div id="scheduleContainer"></div>
+      <section class="panel" id="requestFormPanel" style="margin-top:16px;">
+        <h2>希望を出す</h2>
+        <p class="panel-sub">シフトが確定する前でも、確定した後でも、いつでも送れます。</p>
+        <div class="field">
+          <label for="reqDate">日付</label>
+          <input type="date" id="reqDate">
+        </div>
+        <div class="field">
+          <label for="reqType">種類</label>
+          <select id="reqType">
+            <option value="休み希望">休み希望</option>
+            <option value="遅刻希望">遅刻希望</option>
+            <option value="早退希望">早退希望</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="reqNote">メモ(任意)</label>
+          <textarea id="reqNote" rows="2"></textarea>
+        </div>
+        <button class="btn btn-primary" id="reqSubmitBtn" type="button" style="width:100%; justify-content:center;">希望を送信</button>
+        <p class="panel-hint" id="reqStatusMsg" hidden></p>
+      </section>
+
+      <section class="panel" id="myRequestsPanel" style="margin-top:16px;">
+        <h2>提出した希望</h2>
+        <div id="myRequestsList"></div>
       </section>
     </div>
   </div>
 
-  <footer class="note">株式会社ファミット 配送シフト管理ツール ・ データはこのブラウザ内にのみ保存されます</footer>
+  <footer class="note">株式会社ファミット 配送シフト管理ツール ・ <span id="storageNote">保存先を確認しています…</span></footer>
 </div>
 
 <script>
@@ -432,6 +530,9 @@
   "use strict";
 
   var STORAGE_KEY = 'famit-shift-v2';
+  var REQUESTS_KEY = 'famit-shift-requests-v1';
+  var MODE_KEY = 'famit-shift-mode';
+  var MY_ID_KEY = 'famit-shift-my-id';
   var ROLE_MIN_ONE = {'配送1': true};
   var ROLE_PALETTE = ['#DD6A2C', '#3573C7', '#8B5FBF', '#C0392B', '#B8860B', '#1F8A82'];
   var DISPLAY_GROUP_MAP = {'配送1': '配送', '配送2': '配送'};
@@ -500,8 +601,8 @@
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
     ];
     var requiredByRole = {
-      '配送1': {mon:3, tue:3, wed:3, thu:2, fri:2, sat:2},
-      '配送2': {mon:2, tue:2, wed:2, thu:2, fri:2, sat:2},
+      '配送1': {mon:3, tue:3, wed:2, thu:2, fri:2, sat:3},
+      '配送2': {mon:3, tue:3, wed:3, thu:3, fri:3, sat:1},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
@@ -512,6 +613,16 @@
     return state;
   }
 
+  function normalizeState(data){
+    return {
+      employees: Array.isArray(data.employees) ? data.employees : [],
+      requiredByRole: (data.requiredByRole && typeof data.requiredByRole === 'object') ? data.requiredByRole : {},
+      period: (data.period && typeof data.period === 'object') ? data.period : {start: getDefaultMonday(), weeks: 2},
+      assignmentsByRole: (data.assignmentsByRole && typeof data.assignmentsByRole === 'object') ? data.assignmentsByRole : {},
+      warnings: Array.isArray(data.warnings) ? data.warnings : []
+    };
+  }
+
   function loadState(){
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -519,9 +630,137 @@
     } catch (e) {}
     return defaultState();
   }
-  function saveState(){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {} }
 
   var state = loadState();
+  var requestsCache = (function(){
+    try { return JSON.parse(localStorage.getItem(REQUESTS_KEY)) || []; } catch (e) { return []; }
+  })();
+
+  // ---------- shared-database wiring (graceful no-op if unavailable) ----------
+  var usingDb = false;
+  var stateDocRef = null;
+  var requestsColRef = null;
+  var lastKnownStateJSON = JSON.stringify(state);
+  var saveDebounceTimer = null;
+
+  function showBanner(msg){
+    var el = document.getElementById('dbBanner');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'dbBanner';
+      el.className = 'db-banner';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.hidden = false;
+    clearTimeout(showBanner._t);
+    showBanner._t = setTimeout(function(){ el.hidden = true; }, 4500);
+  }
+
+  function handleStateWriteError(err){
+    if (err && err.code === 'invalid_argument') {
+      showBanner('この変更を保存する権限がありません(管理者のみ編集できます)');
+    } else if (err && err.code !== 'unavailable') {
+      showBanner('保存に失敗しました。通信状態を確認してください。');
+    }
+  }
+
+  function saveState(){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+    lastKnownStateJSON = JSON.stringify(state);
+    if (usingDb && stateDocRef) {
+      stateDocRef.set(state).catch(handleStateWriteError);
+    }
+  }
+  function saveStateDebounced(){
+    clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = setTimeout(saveState, 500);
+  }
+
+  function saveLocalRequests(){ try { localStorage.setItem(REQUESTS_KEY, JSON.stringify(requestsCache)); } catch (e) {} }
+
+  function addRequest(reqData){
+    if (usingDb && requestsColRef) return requestsColRef.add(reqData);
+    reqData.id = uid();
+    requestsCache.push(reqData);
+    saveLocalRequests();
+    renderRequestsAdmin();
+    renderEmployeeView();
+    return Promise.resolve();
+  }
+  function updateRequestStatus(id, status){
+    if (usingDb && requestsColRef) return requestsColRef.doc(id).update({status: status}).catch(handleStateWriteError);
+    var r = requestsCache.filter(function(x){ return x.id === id; })[0];
+    if (r) { r.status = status; saveLocalRequests(); renderRequestsAdmin(); renderEmployeeView(); }
+    return Promise.resolve();
+  }
+  function deleteRequestById(id){
+    if (usingDb && requestsColRef) return requestsColRef.doc(id).delete().catch(handleStateWriteError);
+    requestsCache = requestsCache.filter(function(x){ return x.id !== id; });
+    saveLocalRequests();
+    renderRequestsAdmin();
+    renderEmployeeView();
+    return Promise.resolve();
+  }
+
+  function renderAll(){
+    ensureRequiredForRoles();
+    renderEmployees();
+    renderRequired();
+    renderPeriodForm();
+    renderSchedule();
+    renderSummary();
+    renderWarnings();
+    renderRequestsAdmin();
+    if (!document.getElementById('employeeView').hidden) renderEmployeeView();
+  }
+
+  function initDb(){
+    var usable = (typeof claude !== 'undefined') && claude && typeof claude.use === 'function';
+    var task = usable ? claude.use('db') : Promise.resolve(null);
+    task.then(function(db){
+      var noteEl = document.getElementById('storageNote');
+      if (!db) {
+        if (noteEl) noteEl.textContent = 'この端末(ブラウザ)にのみ保存されます。';
+        return;
+      }
+      usingDb = true;
+      if (noteEl) noteEl.textContent = '同じ組織のサインイン済みメンバー間でオンライン共有されます。';
+      stateDocRef = db.doc('state/app');
+      requestsColRef = db.collection('requests');
+
+      stateDocRef.onSnapshot(function(snap){
+        if (!snap.exists) {
+          lastKnownStateJSON = JSON.stringify(state);
+          stateDocRef.set(state).catch(function(){});
+          return;
+        }
+        var incoming = normalizeState(snap.data());
+        var incomingJSON = JSON.stringify(incoming);
+        if (incomingJSON === lastKnownStateJSON) return;
+        lastKnownStateJSON = incomingJSON;
+        state = incoming;
+        renderAll();
+      }, function(err){
+        if (err && err.code !== 'unavailable') showBanner('データの同期でエラーが発生しました。');
+      });
+
+      requestsColRef.orderBy('date', 'asc').onSnapshot(function(qsnap){
+        requestsCache = qsnap.docs.map(function(d){
+          var body = d.data() || {};
+          body.id = d.id;
+          return body;
+        });
+        renderRequestsAdmin();
+        renderEmployeeView();
+      }, function(err){
+        if (err && err.code !== 'unavailable') showBanner('希望リストの同期でエラーが発生しました。');
+      });
+    }).catch(function(){
+      var noteEl = document.getElementById('storageNote');
+      if (noteEl) noteEl.textContent = 'この端末(ブラウザ)にのみ保存されます。';
+    });
+  }
 
   function getActiveRoles(){
     var seen = {}; var roles = [];
@@ -540,6 +779,59 @@
         DAYS.forEach(function(day){ req[day.key] = Math.max(1, req[day.key]); });
       }
     });
+  }
+
+  // Best-effort heuristic: give each employee a weekly target (their
+  // weeklyMax if set, else however many days they're available, capped
+  // at their own availability) and spread that total across weekdays
+  // proportionally to how many people are available each day.
+  function autoCalcRequired(role){
+    var emps = state.employees.filter(function(e){ return (e.role || '未設定') === role; });
+    var floor = ROLE_MIN_ONE[role] ? 1 : 0;
+    if (emps.length === 0) return emptyRequired();
+
+    var availCount = {}; DAYS.forEach(function(d){ availCount[d.key] = 0; });
+    var capacity = 0;
+    emps.forEach(function(e){
+      var availDays = DAYS.filter(function(d){ return e.avail[d.key]; }).map(function(d){ return d.key; });
+      availDays.forEach(function(k){ availCount[k]++; });
+      var target = e.weeklyMax != null ? Math.min(e.weeklyMax, availDays.length) : availDays.length;
+      capacity += target;
+    });
+
+    var totalAvailSlots = DAYS.reduce(function(s, d){ return s + availCount[d.key]; }, 0);
+    var result = {}; var fracs = [];
+    DAYS.forEach(function(d){
+      var share = totalAvailSlots > 0 ? capacity * (availCount[d.key] / totalAvailSlots) : 0;
+      var base = Math.min(Math.floor(share), availCount[d.key]);
+      result[d.key] = base;
+      fracs.push({key: d.key, frac: share - Math.floor(share), cap: availCount[d.key]});
+    });
+
+    var assigned = DAYS.reduce(function(s, d){ return s + result[d.key]; }, 0);
+    var remaining = Math.max(0, Math.round(capacity) - assigned);
+    fracs.sort(function(a, b){ return b.frac - a.frac; });
+    var guard = 0;
+    while (remaining > 0 && guard < 60) {
+      var any = false;
+      for (var i = 0; i < fracs.length && remaining > 0; i++) {
+        var f = fracs[i];
+        if (result[f.key] < f.cap) { result[f.key]++; remaining--; any = true; }
+      }
+      guard++;
+      if (!any) break;
+    }
+
+    DAYS.forEach(function(d){ result[d.key] = Math.max(floor, result[d.key]); });
+    return result;
+  }
+
+  function autoBalanceAllRoles(){
+    getActiveRoles().forEach(function(role){
+      state.requiredByRole[role] = autoCalcRequired(role);
+    });
+    saveState();
+    renderRequired();
   }
 
   // ---------- generation algorithm ----------
@@ -639,8 +931,8 @@
       nameInput.className = 'emp-name-input';
       nameInput.value = emp.name;
       nameInput.setAttribute('aria-label', '氏名');
-      nameInput.addEventListener('input', function(){ emp.name = nameInput.value; saveState(); });
-      nameInput.addEventListener('blur', function(){ renderSchedule(); renderSummary(); });
+      nameInput.addEventListener('input', function(){ emp.name = nameInput.value; saveStateDebounced(); });
+      nameInput.addEventListener('blur', function(){ saveState(); renderSchedule(); renderSummary(); });
 
       var roleInput = document.createElement('input');
       roleInput.type = 'text';
@@ -704,8 +996,9 @@
       if (emp.weeklyMax != null) maxInput.value = emp.weeklyMax;
       maxInput.addEventListener('input', function(){
         emp.weeklyMax = maxInput.value === '' ? null : Math.max(0, parseInt(maxInput.value, 10) || 0);
-        saveState();
+        saveStateDebounced();
       });
+      maxInput.addEventListener('blur', function(){ saveState(); });
       maxWrap.appendChild(maxLabel);
       maxWrap.appendChild(maxInput);
 
@@ -717,7 +1010,8 @@
       notesInput.className = 'notes-input';
       notesInput.placeholder = '備考(任意)';
       notesInput.value = emp.notes || '';
-      notesInput.addEventListener('input', function(){ emp.notes = notesInput.value; saveState(); });
+      notesInput.addEventListener('input', function(){ emp.notes = notesInput.value; saveStateDebounced(); });
+      notesInput.addEventListener('blur', function(){ saveState(); });
 
       row.appendChild(top);
       row.appendChild(meta);
@@ -738,6 +1032,7 @@
   });
 
   // ---------- rendering: required headcount (per role) ----------
+  document.getElementById('autoBalanceBtn').addEventListener('click', autoBalanceAllRoles);
   var requiredByRoleEl = document.getElementById('requiredByRole');
   function renderRequired(){
     ensureRequiredForRoles();
@@ -776,8 +1071,9 @@
         input.addEventListener('input', function(){
           state.requiredByRole[role][day.key] = Math.max(floor, parseInt(input.value, 10) || floor);
           if (parseInt(input.value, 10) < floor) input.value = floor;
-          saveState();
+          saveStateDebounced();
         });
+        input.addEventListener('blur', function(){ saveState(); });
         cell.appendChild(label);
         cell.appendChild(input);
         grid.appendChild(cell);
@@ -1067,6 +1363,217 @@
 
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
 
+  // ---------- requests: shared rendering ----------
+  function buildRequestItem(r, isAdmin){
+    var item = document.createElement('div');
+    item.className = 'request-item';
+
+    var head = document.createElement('div');
+    head.className = 'request-item-head';
+    var titleEl = document.createElement('span');
+    titleEl.className = 'request-item-title';
+    var d = fromISO(r.date);
+    titleEl.textContent = (isAdmin ? (r.employeeName + ' ・ ') : '') + (d.getMonth()+1) + '/' + d.getDate() + ' ・ ' + r.type;
+    var badge = document.createElement('span');
+    badge.className = 'request-badge ' + (r.status === 'done' ? 'done' : 'pending');
+    badge.textContent = r.status === 'done' ? '確認済み' : '未確認';
+    head.appendChild(titleEl);
+    head.appendChild(badge);
+    item.appendChild(head);
+
+    if (r.note) {
+      var note = document.createElement('p');
+      note.className = 'request-note';
+      note.textContent = r.note;
+      item.appendChild(note);
+    }
+
+    var meta = document.createElement('p');
+    meta.className = 'request-meta';
+    var sentAt = r.submittedAt ? new Date(r.submittedAt) : null;
+    meta.textContent = '送信: ' + (sentAt && !isNaN(sentAt) ? sentAt.toLocaleString('ja-JP') : '-');
+    item.appendChild(meta);
+
+    if (isAdmin) {
+      var actions = document.createElement('div');
+      actions.className = 'request-actions';
+      var toggleBtn = document.createElement('button');
+      toggleBtn.type = 'button';
+      toggleBtn.className = 'btn btn-sm';
+      toggleBtn.textContent = r.status === 'done' ? '未確認に戻す' : '確認済みにする';
+      toggleBtn.addEventListener('click', function(){ updateRequestStatus(r.id, r.status === 'done' ? 'pending' : 'done'); });
+      var delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'btn btn-sm btn-danger';
+      delBtn.textContent = '削除';
+      delBtn.addEventListener('click', function(){ if (confirm('この希望を削除しますか?')) deleteRequestById(r.id); });
+      actions.appendChild(toggleBtn);
+      actions.appendChild(delBtn);
+      item.appendChild(actions);
+    }
+
+    return item;
+  }
+
+  function renderRequestsAdmin(){
+    var list = document.getElementById('requestsAdminList');
+    var titleEl = document.getElementById('requestsAdminTitle');
+    if (!list) return;
+    list.innerHTML = '';
+    var pending = requestsCache.filter(function(r){ return r.status !== 'done'; }).length;
+    if (titleEl) titleEl.textContent = '社員からの希望' + (pending > 0 ? '(' + pending + '件 未確認)' : '');
+    if (requestsCache.length === 0) {
+      var p = document.createElement('p');
+      p.className = 'panel-sub';
+      p.style.margin = '0';
+      p.textContent = 'まだ希望はありません。';
+      list.appendChild(p);
+      return;
+    }
+    requestsCache.slice().sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); })
+      .forEach(function(r){ list.appendChild(buildRequestItem(r, true)); });
+  }
+
+  // ---------- employee (mobile) view ----------
+  function getMyId(){ try { return localStorage.getItem(MY_ID_KEY) || ''; } catch (e) { return ''; } }
+  function setMyId(id){ try { localStorage.setItem(MY_ID_KEY, id); } catch (e) {} }
+
+  function renderMyShifts(emp){
+    var list = document.getElementById('myShiftsList');
+    list.innerHTML = '';
+    var items = [];
+    Object.keys(state.assignmentsByRole).forEach(function(role){
+      var assignments = state.assignmentsByRole[role];
+      Object.keys(assignments).forEach(function(iso){
+        if (assignments[iso].indexOf(emp.id) !== -1) items.push({date: iso, role: role});
+      });
+    });
+    items.sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    if (items.length === 0) {
+      var p = document.createElement('p');
+      p.className = 'panel-sub';
+      p.style.margin = '0';
+      p.textContent = '今のところ、あなたが割り当てられているシフトはありません。';
+      list.appendChild(p);
+      return;
+    }
+    items.forEach(function(item){
+      var d = fromISO(item.date);
+      var dayDef = DAYS[d.getDay() - 1] || DAYS[5];
+      var card = document.createElement('div');
+      card.className = 'shift-card';
+      var dateBox = document.createElement('div');
+      dateBox.className = 'shift-card-date';
+      dateBox.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + '<span>(' + dayDef.label + ')</span>';
+      var dot = document.createElement('span');
+      dot.className = 'shift-card-dot';
+      dot.style.background = groupColor(displayGroupOf(item.role));
+      var roleLabel = document.createElement('span');
+      roleLabel.className = 'shift-card-role';
+      roleLabel.textContent = displayGroupOf(item.role);
+      card.appendChild(dateBox);
+      card.appendChild(dot);
+      card.appendChild(roleLabel);
+      list.appendChild(card);
+    });
+  }
+
+  function renderMyRequests(emp){
+    var list = document.getElementById('myRequestsList');
+    list.innerHTML = '';
+    var mine = requestsCache.filter(function(r){ return r.employeeId === emp.id; })
+      .sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    if (mine.length === 0) {
+      var p = document.createElement('p');
+      p.className = 'panel-sub';
+      p.style.margin = '0';
+      p.textContent = 'まだ希望を送っていません。';
+      list.appendChild(p);
+      return;
+    }
+    mine.forEach(function(r){ list.appendChild(buildRequestItem(r, false)); });
+  }
+
+  function renderEmployeeView(){
+    var sel = document.getElementById('whoAmISelect');
+    var myId = getMyId();
+    sel.innerHTML = '';
+    var blankOpt = document.createElement('option');
+    blankOpt.value = '';
+    blankOpt.textContent = '選択してください';
+    sel.appendChild(blankOpt);
+    state.employees.forEach(function(e){
+      var opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = e.name;
+      if (e.id === myId) opt.selected = true;
+      sel.appendChild(opt);
+    });
+    var content = document.getElementById('employeeContent');
+    var emp = empById(myId);
+    content.hidden = !emp;
+    if (emp) {
+      renderMyShifts(emp);
+      renderMyRequests(emp);
+    }
+  }
+
+  document.getElementById('whoAmISelect').addEventListener('change', function(){
+    setMyId(this.value);
+    renderEmployeeView();
+  });
+
+  function showReqStatus(msg, isError){
+    var el = document.getElementById('reqStatusMsg');
+    el.textContent = msg;
+    el.style.color = isError ? 'var(--warning)' : 'var(--success)';
+    el.hidden = false;
+    clearTimeout(showReqStatus._t);
+    showReqStatus._t = setTimeout(function(){ el.hidden = true; }, 4000);
+  }
+
+  document.getElementById('reqSubmitBtn').addEventListener('click', function(){
+    var emp = empById(getMyId());
+    if (!emp) { alert('先に氏名を選択してください。'); return; }
+    var dateVal = document.getElementById('reqDate').value;
+    if (!dateVal) { alert('日付を選択してください。'); return; }
+    var typeVal = document.getElementById('reqType').value;
+    var noteVal = document.getElementById('reqNote').value.trim();
+    var btn = this;
+    btn.disabled = true;
+    addRequest({
+      employeeId: emp.id,
+      employeeName: emp.name,
+      date: dateVal,
+      type: typeVal,
+      note: noteVal,
+      status: 'pending',
+      submittedAt: new Date().toISOString()
+    }).then(function(){
+      btn.disabled = false;
+      document.getElementById('reqNote').value = '';
+      showReqStatus('希望を送信しました。', false);
+    }).catch(function(){
+      btn.disabled = false;
+      showReqStatus('送信に失敗しました。時間をおいて再度お試しください。', true);
+    });
+  });
+
+  // ---------- mode switching ----------
+  function setMode(mode){
+    document.getElementById('adminView').hidden = mode !== 'admin';
+    document.getElementById('employeeView').hidden = mode !== 'employee';
+    document.getElementById('headerActions').hidden = mode === 'employee';
+    Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
+      btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
+    });
+    try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+    if (mode === 'employee') renderEmployeeView();
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
+    btn.addEventListener('click', function(){ setMode(btn.getAttribute('data-mode')); });
+  });
+
   // ---------- init ----------
   ensureRequiredForRoles();
   renderEmployees();
@@ -1075,6 +1582,16 @@
   renderSchedule();
   renderSummary();
   renderWarnings();
+  renderRequestsAdmin();
+
+  var initialMode = 'admin';
+  try {
+    var savedMode = localStorage.getItem(MODE_KEY);
+    if (savedMode === 'employee' || savedMode === 'admin') initialMode = savedMode;
+  } catch (e) {}
+  setMode(initialMode);
+
+  initDb();
 })();
 </script>
 </body>
