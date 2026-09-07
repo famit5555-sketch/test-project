@@ -410,6 +410,7 @@
       </div>
     </div>
     <div class="header-actions no-print" id="headerActions">
+      <button class="btn btn-danger" id="resetBtn" type="button">⟲ 初期設定にリセット</button>
       <button class="btn" id="printBtn" type="button">🖨 印刷する</button>
     </div>
   </header>
@@ -1473,6 +1474,15 @@
   }
 
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if (!confirm('従業員・必要人数・勤務表を、すべて最初の設定に戻します。よろしいですか?\n(社員からの希望は消えません)')) return;
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    state = defaultState();
+    saveState();
+    renderAll();
+    showBanner('初期設定に戻しました。');
+  });
 
   // ---------- requests: shared rendering ----------
   function buildRequestItem(r, isAdmin){
