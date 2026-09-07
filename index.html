@@ -434,9 +434,19 @@
   var STORAGE_KEY = 'famit-shift-v2';
   var ROLE_MIN_ONE = {'配送1': true};
   var ROLE_PALETTE = ['#DD6A2C', '#3573C7', '#8B5FBF', '#C0392B', '#B8860B', '#1F8A82'];
-  function roleColor(role){
-    var roles = getActiveRoles();
-    var idx = roles.indexOf(role);
+  var DISPLAY_GROUP_MAP = {'配送1': '配送', '配送2': '配送'};
+  function displayGroupOf(role){ return DISPLAY_GROUP_MAP[role] || role; }
+  function getDisplayGroupKeys(){
+    var seen = {}; var keys = [];
+    getActiveRoles().forEach(function(role){
+      var g = displayGroupOf(role);
+      if (!seen[g]) { seen[g] = true; keys.push(g); }
+    });
+    return keys;
+  }
+  function groupColor(groupKey){
+    var keys = getDisplayGroupKeys();
+    var idx = keys.indexOf(groupKey);
     if (idx === -1) idx = 0;
     return ROLE_PALETTE[idx % ROLE_PALETTE.length];
   }
@@ -860,21 +870,30 @@
 
         var anySlots = false;
 
+        var groupKeys = [];
+        var rolesByGroup = {};
         roles.forEach(function(role){
-          var assignments = assignmentsByRole[role] || {};
-          var slots = assignments[iso] || [];
-          if (slots.length === 0) return;
-          anySlots = true;
+          var g = displayGroupOf(role);
+          if (!rolesByGroup[g]) { rolesByGroup[g] = []; groupKeys.push(g); }
+          rolesByGroup[g].push(role);
+        });
 
-          var required = slots.length;
-          var filled = slots.filter(Boolean).length;
+        groupKeys.forEach(function(groupKey){
+          var groupRoles = rolesByGroup[groupKey];
+          var hasAny = groupRoles.some(function(role){ return ((assignmentsByRole[role]||{})[iso] || []).length > 0; });
+          if (!hasAny) return;
+          anySlots = true;
 
           var sub = document.createElement('div');
           sub.className = 'route-subgroup';
 
+          var anyShort = groupRoles.some(function(role){
+            var slots = (assignmentsByRole[role]||{})[iso] || [];
+            return slots.filter(Boolean).length < slots.length;
+          });
           var subHead = document.createElement('div');
           subHead.className = 'route-sublabel-row';
-          if (filled < required) {
+          if (anyShort) {
             var badge = document.createElement('span');
             badge.className = 'shortage-badge';
             badge.textContent = '不足';
@@ -882,44 +901,50 @@
           }
           if (subHead.children.length) sub.appendChild(subHead);
 
-          var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
-            .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
+          groupRoles.forEach(function(role){
+            var assignments = assignmentsByRole[role] || {};
+            var slots = assignments[iso] || [];
+            if (slots.length === 0) return;
 
-          slots.forEach(function(assignedId, slotIndex){
-            var wrap = document.createElement('div');
-            wrap.className = 'select-wrap';
-            var sel = document.createElement('select');
-            sel.className = 'slot-select' + (assignedId ? ' filled' : ' empty-slot');
-            sel.style.borderLeftWidth = '4px';
-            sel.style.borderLeftColor = roleColor(role);
+            var availableForDay = state.employees.filter(function(e){ return (e.role||'未設定') === role && e.avail[dayDef.key]; })
+              .sort(function(a,b){ return a.name.localeCompare(b.name, 'ja'); });
 
-            var noneOpt = document.createElement('option');
-            noneOpt.value = '';
-            noneOpt.textContent = '— 空き —';
-            sel.appendChild(noneOpt);
+            slots.forEach(function(assignedId, slotIndex){
+              var wrap = document.createElement('div');
+              wrap.className = 'select-wrap';
+              var sel = document.createElement('select');
+              sel.className = 'slot-select' + (assignedId ? ' filled' : ' empty-slot');
+              sel.style.borderLeftWidth = '4px';
+              sel.style.borderLeftColor = groupColor(groupKey);
 
-            var optionEmps = availableForDay.slice();
-            if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
-              var cur = empById(assignedId);
-              if (cur) optionEmps.push(cur);
-            }
-            optionEmps.forEach(function(e){
-              var opt = document.createElement('option');
-              opt.value = e.id;
-              opt.textContent = e.name;
-              if (e.id === assignedId) opt.selected = true;
-              sel.appendChild(opt);
+              var noneOpt = document.createElement('option');
+              noneOpt.value = '';
+              noneOpt.textContent = '— 空き —';
+              sel.appendChild(noneOpt);
+
+              var optionEmps = availableForDay.slice();
+              if (assignedId && !optionEmps.some(function(e){ return e.id === assignedId; })) {
+                var cur = empById(assignedId);
+                if (cur) optionEmps.push(cur);
+              }
+              optionEmps.forEach(function(e){
+                var opt = document.createElement('option');
+                opt.value = e.id;
+                opt.textContent = e.name;
+                if (e.id === assignedId) opt.selected = true;
+                sel.appendChild(opt);
+              });
+
+              sel.addEventListener('change', function(){
+                assignments[iso][slotIndex] = sel.value || null;
+                saveState();
+                renderSchedule();
+                renderSummary();
+              });
+
+              wrap.appendChild(sel);
+              sub.appendChild(wrap);
             });
-
-            sel.addEventListener('change', function(){
-              assignments[iso][slotIndex] = sel.value || null;
-              saveState();
-              renderSchedule();
-              renderSummary();
-            });
-
-            wrap.appendChild(sel);
-            sub.appendChild(wrap);
           });
 
           cell.appendChild(sub);
@@ -954,14 +979,14 @@
 
     var legend = document.createElement('div');
     legend.className = 'role-legend';
-    roles.forEach(function(role){
+    getDisplayGroupKeys().forEach(function(groupKey){
       var item = document.createElement('span');
       item.className = 'role-legend-item';
       var dot = document.createElement('span');
       dot.className = 'role-legend-dot';
-      dot.style.background = roleColor(role);
+      dot.style.background = groupColor(groupKey);
       var text = document.createElement('span');
-      text.textContent = role;
+      text.textContent = groupKey;
       item.appendChild(dot);
       item.appendChild(text);
       legend.appendChild(item);
