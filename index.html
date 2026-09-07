@@ -535,7 +535,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = 'famit-shift-v5';
+  var STORAGE_KEY = 'famit-shift-v6';
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
@@ -652,7 +652,7 @@
     ];
     var requiredByRole = {
       '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
-      '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0}
+      '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0, holidayIgnore:true}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
     var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: []};
@@ -878,7 +878,9 @@
 
   function autoBalanceAllRoles(){
     getActiveRoles().forEach(function(role){
+      var hadHolidayIgnore = state.requiredByRole[role] && state.requiredByRole[role].holidayIgnore;
       state.requiredByRole[role] = autoCalcRequired(role);
+      if (hadHolidayIgnore) state.requiredByRole[role].holidayIgnore = true;
     });
     saveState();
     renderRequired();
@@ -899,7 +901,7 @@
         var cur = addDays(startDate, w * 7 + d);
         var dayKey = DAYS[d].key;
         var iso = toISO(cur);
-        var isHoliday = required.holiday != null && isJapaneseHoliday(cur);
+        var isHoliday = !required.holidayIgnore && required.holiday != null && isJapaneseHoliday(cur);
         var need = isHoliday ? required.holiday : (required[dayKey] || 0);
 
         var candidates = employees.filter(function(e){
@@ -1186,8 +1188,15 @@
         return cell;
       }
       DAYS.forEach(function(day){ grid.appendChild(buildReqCell(day.key, day.label)); });
-      grid.appendChild(buildReqCell('holiday', '祝日'));
+      if (!state.requiredByRole[role].holidayIgnore) grid.appendChild(buildReqCell('holiday', '祝日'));
       block.appendChild(grid);
+      if (state.requiredByRole[role].holidayIgnore) {
+        var note = document.createElement('p');
+        note.className = 'panel-sub';
+        note.style.cssText = 'margin:6px 0 0;';
+        note.textContent = '※ 祝日でも曜日通りの人数のままにします。';
+        block.appendChild(note);
+      }
       requiredByRoleEl.appendChild(block);
     });
   }
