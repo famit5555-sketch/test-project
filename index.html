@@ -22,6 +22,8 @@
     --success-soft: #DFF3E6;
     --warning: #A66A12;
     --warning-soft: #FBEBD3;
+    --rest: #3573C7;
+    --rest-soft: #DCE8F7;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -44,6 +46,8 @@
       --success-soft: #163527;
       --warning: #E3A93F;
       --warning-soft: #3A2C10;
+      --rest: #6FA8E8;
+      --rest-soft: #1B2E44;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -63,6 +67,8 @@
     --success-soft: #163527;
     --warning: #E3A93F;
     --warning-soft: #3A2C10;
+    --rest: #6FA8E8;
+    --rest-soft: #1B2E44;
     --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
   }
 
@@ -342,7 +348,7 @@
   }
   select.slot-select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   select.slot-select.filled { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
-  select.slot-select.empty-slot { border-style: dashed; border-color: var(--line); background: var(--surface-2); color: var(--ink-faint); font-weight: 500; }
+  select.slot-select.empty-slot { border-style: dashed; border-color: var(--rest); background: var(--rest-soft); color: var(--rest); font-weight: 500; }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -414,8 +420,7 @@
   </div>
 
   <datalist id="roleOptions">
-    <option value="配送1"></option>
-    <option value="配送2"></option>
+    <option value="配送"></option>
     <option value="倉庫整理"></option>
   </datalist>
 
@@ -431,7 +436,7 @@
 
         <section class="panel" id="employeePanel">
           <h2><span class="panel-num">1</span>従業員・役割・出勤条件</h2>
-          <p class="panel-sub">氏名、役割(配送1/配送2/倉庫整理など)、出勤できる曜日を設定します。</p>
+          <p class="panel-sub">氏名、役割(配送/倉庫整理など)、出勤できる曜日を設定します。</p>
           <div id="employeeRows"></div>
           <button class="btn add-emp-btn" id="addEmpBtn" type="button">＋ 従業員を追加</button>
           <p class="panel-hint">「週上限」を5にすると、日曜と合わせて週休二日になります。出勤できる曜日が5日以下の人(アルバイトなど)は上限を空欄のままで構いません。</p>
@@ -535,9 +540,9 @@
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
-  var ROLE_MIN_ONE = {'配送1': true};
+  var ROLE_MIN_ONE = {'配送': true};
   var ROLE_PALETTE = ['#DD6A2C', '#3573C7', '#8B5FBF', '#C0392B', '#B8860B', '#1F8A82'];
-  var DISPLAY_GROUP_MAP = {'配送1': '配送', '配送2': '配送'};
+  var DISPLAY_GROUP_MAP = {};
   function displayGroupOf(role){ return DISPLAY_GROUP_MAP[role] || role; }
   function getDisplayGroupKeys(){
     var seen = {}; var keys = [];
@@ -654,18 +659,17 @@
 
   function defaultState(){
     var employees = [
-      mkEmp('安井', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('西田', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('鈴木', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('藤村', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 6, '追加シフト希望(稼ぎたい)', true),
-      mkEmp('坂本', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('漢那', '配送2', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
-      mkEmp('藤原', '配送2', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
+      mkEmp('安井', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 6, '追加シフト希望(稼ぎたい)', true),
+      mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
+      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
+      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
     ];
     var requiredByRole = {
-      '配送1': {mon:3, tue:3, wed:3, thu:2, fri:2, sat:3, holiday:2},
-      '配送2': {mon:3, tue:3, wed:3, thu:3, fri:3, sat:1, holiday:1},
+      '配送': {mon:6, tue:6, wed:6, thu:5, fri:5, sat:4, holiday:3},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
@@ -1125,7 +1129,7 @@
   }
 
   document.getElementById('addEmpBtn').addEventListener('click', function(){
-    var emp = mkEmp('新しい従業員', '配送1', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, '');
+    var emp = mkEmp('新しい従業員', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, '');
     state.employees.push(emp);
     ensureRequiredForRoles();
     saveState();
