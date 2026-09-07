@@ -1055,6 +1055,7 @@
       delBtn.title = '削除';
       delBtn.textContent = '✕';
       delBtn.addEventListener('click', function(){
+        if (!confirm(emp.name + 'さんを削除しますか?')) return;
         state.employees = state.employees.filter(function(e){ return e.id !== emp.id; });
         saveState();
         renderEmployees(); renderRequired(); renderSchedule(); renderSummary();
