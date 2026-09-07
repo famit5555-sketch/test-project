@@ -635,14 +635,14 @@
       mkEmp('安井', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 6, '追加シフト希望(稼ぎたい)', true),
+      mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, 'アルバイト(月〜金)'),
       mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)'),
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:0}, null, '基本 月〜金')
     ];
     var requiredByRole = {
-      '配送': {mon:6, tue:6, wed:6, thu:5, fri:5, sat:4, holiday:3},
+      '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
