@@ -26,8 +26,8 @@
     --danger-soft: #FBE2DE;
     --rest: #3573C7;
     --rest-soft: #DCE8F7;
-    --leave: #8E44AD;
-    --leave-soft: #EEE0F5;
+    --leave: #A9821A;
+    --leave-soft: #FBF0CC;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -54,8 +54,8 @@
       --danger-soft: #3A1D18;
       --rest: #6FA8E8;
       --rest-soft: #1B2E44;
-      --leave: #C08AE0;
-      --leave-soft: #33223D;
+      --leave: #E8C34F;
+      --leave-soft: #3B3319;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -344,8 +344,9 @@
     font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
     color: var(--ink-soft); margin-bottom: 8px; text-transform: uppercase;
   }
-  .week-grid { display: grid; grid-template-columns: repeat(6, minmax(136px, 1fr)); gap: 8px; min-width: 860px; }
-  .day-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(154px, 1fr)); gap: 7px; min-width: 1120px; }
+  .day-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 9px 8px; display: flex; flex-direction: column; gap: 6px; }
+  .day-cell-blank { background: transparent; border-color: transparent; }
   .day-cell-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
   .day-cell-date { font-family: var(--font-display); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .day-cell-date span { color: var(--ink-soft); font-weight: 500; }
@@ -362,27 +363,27 @@
   }
   .attend-row.readonly .attend-main { cursor: default; }
   .attend-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-  .attend-name { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); }
-  .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
+  .attend-name { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; flex-shrink: 0; }
   .attend-row.off { background: var(--rest-soft); border-color: var(--rest); }
   .attend-row.off .attend-name { color: var(--rest); }
   .attend-row.off .attend-status { color: var(--rest); }
   .attend-row.leave { background: var(--leave-soft); border-color: var(--leave); }
   .attend-row.leave .attend-name { color: var(--leave); }
   .attend-row.leave .attend-status { color: var(--leave); }
+  .attend-row.absence { background: var(--danger-soft); border-color: var(--danger); }
+  .attend-row.absence .attend-name { color: var(--danger); }
+  .attend-row.absence .attend-status { color: var(--danger); }
   .hour-input {
     width: 40px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.6); border-radius: 5px;
     background: rgba(255,255,255,0.35); color: var(--accent-ink); font-size: 11px; font-weight: 700;
     padding: 3px 2px; text-align: center; font-variant-numeric: tabular-nums; font-family: var(--font-body);
   }
-  .pl-btn {
-    flex-shrink: 0; border: 1px solid var(--rest); background: transparent; color: var(--rest);
-    font-size: 9.5px; font-weight: 700; padding: 3px 5px; border-radius: 999px; white-space: nowrap;
-    font-family: var(--font-body);
+  .status-select {
+    flex-shrink: 0; max-width: 62px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--surface); color: var(--ink); font-size: 10.5px; font-weight: 700;
+    padding: 3px 2px; font-family: var(--font-body);
   }
-  .pl-btn:hover { background: var(--rest-soft); }
-  .pl-btn.cancel { border-color: var(--leave); color: var(--leave); }
-  .pl-btn.cancel:hover { background: var(--leave-soft); }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -425,9 +426,11 @@
     .attend-row .attend-name, .attend-row .attend-status { color: #000 !important; }
     .attend-row.off { background: #fff !important; border-color: #3573c7 !important; }
     .attend-row.off .attend-name, .attend-row.off .attend-status { color: #3573c7 !important; }
-    .attend-row.leave { background: #fff !important; border-color: #8E44AD !important; }
-    .attend-row.leave .attend-name, .attend-row.leave .attend-status { color: #8E44AD !important; }
-    .hour-input, .pl-btn { display: none !important; }
+    .attend-row.leave { background: #fff !important; border-color: #A9821A !important; }
+    .attend-row.leave .attend-name, .attend-row.leave .attend-status { color: #A9821A !important; }
+    .attend-row.absence { background: #fff !important; border-color: #C0392B !important; }
+    .attend-row.absence .attend-name, .attend-row.absence .attend-status { color: #C0392B !important; }
+    .hour-input, .status-select { display: none !important; }
   }
 </style>
 </head>
@@ -488,17 +491,11 @@
         </section>
 
         <section class="panel" id="periodPanel">
-          <h2><span class="panel-num">3</span>期間を決めて生成</h2>
-          <p class="panel-sub">開始日と週数を指定し、シフトを役割ごとに均等に割り振ります。</p>
-          <div class="period-row">
-            <div class="field">
-              <label for="startDate">開始日(月曜)</label>
-              <input type="date" id="startDate">
-            </div>
-            <div class="field">
-              <label for="weeksInput">週数</label>
-              <input type="number" id="weeksInput" min="1" max="12" step="1">
-            </div>
+          <h2><span class="panel-num">3</span>月を決めて生成</h2>
+          <p class="panel-sub">対象の月を指定すると、その月の1日〜末日までシフトを役割ごとに均等に割り振ります(日曜は全員固定休)。</p>
+          <div class="field">
+            <label for="monthInput">対象月</label>
+            <input type="month" id="monthInput">
           </div>
           <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
           <div class="warn-list" id="warnList" hidden></div>
@@ -517,7 +514,7 @@
 
         <section class="panel" id="laborPanel" style="margin-top:18px;">
           <h2 style="margin-bottom:3px;">労務・残業集計</h2>
-          <p class="panel-sub">所定労働時間は1日8時間(休憩1時間別)。それを超えた分を残業として累計します。実働時間は勤務表の各出勤欄の時間数(既定8h)を編集すると反映されます。</p>
+          <p class="panel-sub">所定労働時間は1日8時間(休憩1時間別)。それを超えた分を残業として累計します。実働時間は勤務表の各出勤欄の時間数(既定8h・15分刻みで入力可)を編集すると反映されます。</p>
           <div id="laborContainer"></div>
         </section>
 
@@ -582,7 +579,7 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = 'famit-shift-v9';
+  var STORAGE_KEY = 'famit-shift-v10';
   var STANDARD_DAILY_HOURS = 8;
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
@@ -603,12 +600,9 @@
   function addDays(d, n){ var r = new Date(d); r.setDate(r.getDate()+n); return r; }
   function fromISO(iso){ var p = iso.split('-'); return new Date(parseInt(p[0],10), parseInt(p[1],10)-1, parseInt(p[2],10)); }
 
-  function getDefaultMonday(){
+  function getDefaultMonth(){
     var d = new Date();
-    var day = d.getDay();
-    var add = (8 - day) % 7;
-    if (day === 1) add = 0;
-    return toISO(addDays(d, add));
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1);
   }
 
   function shuffle(arr){
@@ -702,9 +696,9 @@
       '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0, holidayIgnore:true}
     };
-    var period = {start: getDefaultMonday(), weeks: 2};
-    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: [], actualHours: {}, paidLeaveMarks: {}};
-    var gen = generateAll(state.employees, state.requiredByRole, state.period.start, state.period.weeks);
+    var period = {month: getDefaultMonth()};
+    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: [], actualHours: {}, paidLeaveMarks: {}, absenceMarks: {}};
+    var gen = generateAll(state.employees, state.requiredByRole, state.period.month);
     state.assignmentsByRole = gen.assignmentsByRole;
     state.warnings = gen.warnings;
     return state;
@@ -716,11 +710,12 @@
     return {
       employees: employees,
       requiredByRole: (data.requiredByRole && typeof data.requiredByRole === 'object') ? data.requiredByRole : {},
-      period: (data.period && typeof data.period === 'object') ? data.period : {start: getDefaultMonday(), weeks: 2},
+      period: (data.period && typeof data.period === 'object' && data.period.month) ? data.period : {month: getDefaultMonth()},
       assignmentsByRole: (data.assignmentsByRole && typeof data.assignmentsByRole === 'object') ? data.assignmentsByRole : {},
       warnings: Array.isArray(data.warnings) ? data.warnings : [],
       actualHours: (data.actualHours && typeof data.actualHours === 'object') ? data.actualHours : {},
-      paidLeaveMarks: (data.paidLeaveMarks && typeof data.paidLeaveMarks === 'object') ? data.paidLeaveMarks : {}
+      paidLeaveMarks: (data.paidLeaveMarks && typeof data.paidLeaveMarks === 'object') ? data.paidLeaveMarks : {},
+      absenceMarks: (data.absenceMarks && typeof data.absenceMarks === 'object') ? data.absenceMarks : {}
     };
   }
 
@@ -940,72 +935,82 @@
   }
 
   // ---------- generation algorithm ----------
-  function generateForRole(employees, required, startISO, weeks, guaranteeMin){
+  // Generates a full calendar month (day 1 through the last day of the
+  // month). Sundays are always a fixed day off for everyone and are
+  // recorded as an empty assignment; the weekly cap resets every Monday.
+  function daysInMonth(year, month){ return new Date(year, month, 0).getDate(); }
+
+  function generateForRole(employees, required, monthStr, guaranteeMin){
     var assignments = {};
     var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
     var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
     var warnings = [];
-    var startDate = fromISO(startISO);
+    var parts = monthStr.split('-');
+    var year = parseInt(parts[0], 10), month = parseInt(parts[1], 10);
+    var total = daysInMonth(year, month);
+    var weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; });
+    var dayIndex = 0;
 
-    for (var w = 0; w < weeks; w++) {
-      var weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; });
-      for (var d = 0; d < 6; d++) {
-        var dayIndex = w * 6 + d;
-        var cur = addDays(startDate, w * 7 + d);
-        var dayKey = DAYS[d].key;
-        var iso = toISO(cur);
-        var isHoliday = !required.holidayIgnore && required.holiday != null && isJapaneseHoliday(cur);
-        var need = isHoliday ? required.holiday : (required[dayKey] || 0);
+    for (var day = 1; day <= total; day++) {
+      var cur = new Date(year, month - 1, day);
+      var iso = toISO(cur);
+      var jsDay = cur.getDay();
+      if (jsDay === 0) { assignments[iso] = []; continue; }
+      if (jsDay === 1) { weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; }); }
+      var dayKey = DAYS[jsDay - 1].key;
+      var dayLabel = DAYS[jsDay - 1].label;
+      var isHoliday = !required.holidayIgnore && required.holiday != null && isJapaneseHoliday(cur);
+      var need = isHoliday ? required.holiday : (required[dayKey] || 0);
 
-        var candidates = employees.filter(function(e){
-          return e.avail[dayKey] && (e.weeklyMax == null || weeklyCount[e.id] < e.weeklyMax);
-        });
-        candidates = shuffle(candidates);
-        candidates.sort(function(a, b){
-          var pa = a.priorityExtra ? 0 : 1, pb = b.priorityExtra ? 0 : 1;
-          return (pa - pb) || (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
-        });
+      var candidates = employees.filter(function(e){
+        return e.avail[dayKey] && (e.weeklyMax == null || weeklyCount[e.id] < e.weeklyMax);
+      });
+      candidates = shuffle(candidates);
+      candidates.sort(function(a, b){
+        var pa = a.priorityExtra ? 0 : 1, pb = b.priorityExtra ? 0 : 1;
+        return (pa - pb) || (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
+      });
 
-        var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
+      var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
 
-        if (guaranteeMin && need >= 1 && chosen.length === 0) {
-          var fallback = employees.filter(function(e){ return e.avail[dayKey]; });
-          fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
-          if (fallback.length > 0) chosen.push(fallback[0].id);
-        }
-
-        // Still short of `need`? Let anyone who wants extra shifts cover
-        // the gap even past their own weekly cap, before giving up.
-        while (chosen.length < need) {
-          var extra = employees.filter(function(e){
-            return e.priorityExtra && e.avail[dayKey] && chosen.indexOf(e.id) === -1;
-          });
-          extra = shuffle(extra).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
-          if (extra.length === 0) break;
-          chosen.push(extra[0].id);
-        }
-
-        while (chosen.length < need) chosen.push(null);
-
-        assignments[iso] = chosen;
-        chosen.forEach(function(id){
-          if (id) { totalCount[id]++; weeklyCount[id]++; lastIndex[id] = dayIndex; }
-        });
-        if (chosen.indexOf(null) !== -1) {
-          warnings.push({date: iso, dayLabel: DAYS[d].label, need: need, filled: chosen.filter(Boolean).length, holiday: isHoliday});
-        }
+      if (guaranteeMin && need >= 1 && chosen.length === 0) {
+        var fallback = employees.filter(function(e){ return e.avail[dayKey]; });
+        fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
+        if (fallback.length > 0) chosen.push(fallback[0].id);
       }
+
+      // Still short of `need`? Let anyone who wants extra shifts cover
+      // the gap even past their own weekly cap, before giving up.
+      while (chosen.length < need) {
+        var extra = employees.filter(function(e){
+          return e.priorityExtra && e.avail[dayKey] && chosen.indexOf(e.id) === -1;
+        });
+        extra = shuffle(extra).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
+        if (extra.length === 0) break;
+        chosen.push(extra[0].id);
+      }
+
+      while (chosen.length < need) chosen.push(null);
+
+      assignments[iso] = chosen;
+      chosen.forEach(function(id){
+        if (id) { totalCount[id]++; weeklyCount[id]++; lastIndex[id] = dayIndex; }
+      });
+      if (chosen.indexOf(null) !== -1) {
+        warnings.push({date: iso, dayLabel: dayLabel, need: need, filled: chosen.filter(Boolean).length, holiday: isHoliday});
+      }
+      dayIndex++;
     }
     return {assignments: assignments, warnings: warnings};
   }
 
-  function generateAllOnce(employees, requiredByRole, startISO, weeks){
+  function generateAllOnce(employees, requiredByRole, monthStr){
     var roles = Object.keys(requiredByRole);
     var assignmentsByRole = {};
     var warnings = [];
     roles.forEach(function(role){
       var roleEmployees = employees.filter(function(e){ return (e.role || '未設定') === role; });
-      var result = generateForRole(roleEmployees, requiredByRole[role], startISO, weeks, !!ROLE_MIN_ONE[role]);
+      var result = generateForRole(roleEmployees, requiredByRole[role], monthStr, !!ROLE_MIN_ONE[role]);
       assignmentsByRole[role] = result.assignments;
       result.warnings.forEach(function(w){ w.role = role; warnings.push(w); });
     });
@@ -1016,10 +1021,10 @@
   // early pick can occasionally leave a later day short even when the
   // week's totals would allow a fully-staffed outcome. Try a handful of
   // reshuffles and keep the one with the fewest (ideally zero) shortages.
-  function generateAll(employees, requiredByRole, startISO, weeks){
+  function generateAll(employees, requiredByRole, monthStr){
     var best = null;
     for (var i = 0; i < 30; i++) {
-      var attempt = generateAllOnce(employees, requiredByRole, startISO, weeks);
+      var attempt = generateAllOnce(employees, requiredByRole, monthStr);
       if (!best || attempt.warnings.length < best.warnings.length) best = attempt;
       if (best.warnings.length === 0) break;
     }
@@ -1067,6 +1072,34 @@
     if (!isPaidLeave(emp.id, iso)) return;
     delete state.paidLeaveMarks[emp.id][iso];
     emp.paidLeaveBalance = (emp.paidLeaveBalance || 0) + 1;
+  }
+
+  // ---------- absence (欠勤) ----------
+  function isAbsence(empId, iso){
+    return !!(state.absenceMarks && state.absenceMarks[empId] && state.absenceMarks[empId][iso]);
+  }
+  function markAbsence(emp, iso){
+    if (isAbsence(emp.id, iso)) return;
+    if (!state.absenceMarks) state.absenceMarks = {};
+    if (!state.absenceMarks[emp.id]) state.absenceMarks[emp.id] = {};
+    state.absenceMarks[emp.id][iso] = true;
+  }
+  function unmarkAbsence(emp, iso){
+    if (!isAbsence(emp.id, iso)) return;
+    delete state.absenceMarks[emp.id][iso];
+  }
+
+  // ---------- off-day subtype: 'off' (休み) | 'leave' (有給) | 'absence' (欠勤) ----------
+  function getOffSubtype(empId, iso){
+    if (isPaidLeave(empId, iso)) return 'leave';
+    if (isAbsence(empId, iso)) return 'absence';
+    return 'off';
+  }
+  function setOffSubtype(emp, iso, subtype){
+    if (subtype !== 'leave') unmarkPaidLeave(emp, iso);
+    if (subtype !== 'absence') unmarkAbsence(emp, iso);
+    if (subtype === 'leave') markPaidLeave(emp, iso);
+    else if (subtype === 'absence') markAbsence(emp, iso);
   }
 
   function computeLaborSummary(){
@@ -1353,23 +1386,19 @@
   }
 
   // ---------- period form ----------
-  var startDateEl = document.getElementById('startDate');
-  var weeksInputEl = document.getElementById('weeksInput');
+  var monthInputEl = document.getElementById('monthInput');
   function renderPeriodForm(){
-    startDateEl.value = state.period.start;
-    weeksInputEl.value = state.period.weeks;
+    monthInputEl.value = state.period.month;
   }
-  startDateEl.addEventListener('change', function(){ state.period.start = startDateEl.value; saveState(); });
-  weeksInputEl.addEventListener('change', function(){
-    state.period.weeks = Math.max(1, Math.min(12, parseInt(weeksInputEl.value, 10) || 1));
-    weeksInputEl.value = state.period.weeks;
+  monthInputEl.addEventListener('change', function(){
+    if (monthInputEl.value) state.period.month = monthInputEl.value;
     saveState();
   });
 
   document.getElementById('generateBtn').addEventListener('click', function(){
     if (state.employees.length === 0) { alert('従業員を1人以上追加してください。'); return; }
     ensureRequiredForRoles();
-    var gen = generateAll(state.employees, state.requiredByRole, state.period.start, state.period.weeks);
+    var gen = generateAll(state.employees, state.requiredByRole, state.period.month);
     state.assignmentsByRole = gen.assignmentsByRole;
     state.warnings = gen.warnings;
     saveState();
@@ -1403,6 +1432,7 @@
       arr[idx] = null;
     } else {
       unmarkPaidLeave(emp, iso);
+      unmarkAbsence(emp, iso);
       var nullIdx = arr.indexOf(null);
       if (nullIdx !== -1) arr[nullIdx] = emp.id;
       else arr.push(emp.id);
@@ -1412,6 +1442,12 @@
     renderSummary();
     renderLaborSummary();
   }
+
+  var CAL_DAYS = [
+    {key:'mon', label:'月'}, {key:'tue', label:'火'}, {key:'wed', label:'水'},
+    {key:'thu', label:'木'}, {key:'fri', label:'金'}, {key:'sat', label:'土'},
+    {key:'sun', label:'日'}
+  ];
 
   function buildWeeksInto(container, roles, assignmentsByRole, readOnly){
     var dates = [];
@@ -1423,27 +1459,46 @@
     dates.sort();
     if (dates.length === 0) return false;
 
-    for (var i = 0; i < dates.length; i += 6) {
-      var weekDates = dates.slice(i, i + 6);
+    // Pad into full Mon–Sun calendar rows so the 1st and the last day of
+    // the month line up under their real weekday column.
+    var first = fromISO(dates[0]);
+    var last = fromISO(dates[dates.length - 1]);
+    var leadingBlanks = (first.getDay() + 6) % 7;
+    var trailingBlanks = (7 - ((last.getDay() + 6) % 7) - 1) % 7;
+    var slots = [];
+    for (var b = 0; b < leadingBlanks; b++) slots.push(null);
+    dates.forEach(function(iso){ slots.push(iso); });
+    for (var b2 = 0; b2 < trailingBlanks; b2++) slots.push(null);
+
+    for (var i = 0; i < slots.length; i += 7) {
+      var weekSlots = slots.slice(i, i + 7);
       var block = document.createElement('div');
       block.className = 'week-block';
 
-      var first = fromISO(weekDates[0]);
-      var last = fromISO(weekDates[weekDates.length - 1]);
+      var weekDatesOnly = weekSlots.filter(Boolean);
+      var wFirst = fromISO(weekDatesOnly[0]);
+      var wLast = fromISO(weekDatesOnly[weekDatesOnly.length - 1]);
       var label = document.createElement('div');
       label.className = 'week-label';
-      label.textContent = '第' + (i/6 + 1) + '週　' + (first.getMonth()+1) + '/' + first.getDate() + '〜' + (last.getMonth()+1) + '/' + last.getDate();
+      label.textContent = '第' + (i/7 + 1) + '週　' + (wFirst.getMonth()+1) + '/' + wFirst.getDate() + '〜' + (wLast.getMonth()+1) + '/' + wLast.getDate();
       block.appendChild(label);
 
       var grid = document.createElement('div');
       grid.className = 'week-grid';
 
-      weekDates.forEach(function(iso, idx){
-        var d = fromISO(iso);
-        var dayDef = DAYS[idx % 6];
-
+      weekSlots.forEach(function(iso, idx){
         var cell = document.createElement('div');
         cell.className = 'day-cell';
+
+        if (!iso) {
+          cell.className += ' day-cell-blank';
+          grid.appendChild(cell);
+          return;
+        }
+
+        var d = fromISO(iso);
+        var dayDef = CAL_DAYS[idx];
+        var isSunday = dayDef.key === 'sun';
 
         var head = document.createElement('div');
         head.className = 'day-cell-head';
@@ -1452,6 +1507,15 @@
         dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
         head.appendChild(dateEl);
         cell.appendChild(head);
+
+        if (isSunday) {
+          var sunNote = document.createElement('p');
+          sunNote.style.cssText = 'font-size:11.5px;color:var(--ink-faint);margin:2px 0 0;';
+          sunNote.textContent = '定休日';
+          cell.appendChild(sunNote);
+          grid.appendChild(cell);
+          return;
+        }
 
         var anySlots = false;
         var anyShort = roles.some(function(role){
@@ -1470,10 +1534,13 @@
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
-          var onLeave = !working && !readOnly && isPaidLeave(emp.id, iso);
+          // Employees only ever see 出勤/休み — the 有給/欠勤 distinction is
+          // an admin-side record and is deliberately not exposed here.
+          var subtype = (working || readOnly) ? 'off' : getOffSubtype(emp.id, iso);
 
           var rowDiv = document.createElement('div');
-          rowDiv.className = 'attend-row' + (onLeave ? ' leave' : (working ? '' : ' off')) + (readOnly ? ' readonly' : '');
+          var rowClass = working ? '' : (subtype === 'leave' ? ' leave' : (subtype === 'absence' ? ' absence' : ' off'));
+          rowDiv.className = 'attend-row' + rowClass + (readOnly ? ' readonly' : '');
 
           var mainArea = document.createElement(readOnly ? 'div' : 'button');
           if (!readOnly) mainArea.type = 'button';
@@ -1484,7 +1551,8 @@
           nameSpan.textContent = emp.name;
           var statusSpan = document.createElement('span');
           statusSpan.className = 'attend-status';
-          statusSpan.textContent = working ? '出勤' : (onLeave ? '有給' : '休み');
+          var statusLabel = working ? '出勤' : (subtype === 'leave' ? '有給' : (subtype === 'absence' ? '欠勤' : '休み'));
+          statusSpan.textContent = statusLabel;
 
           mainArea.appendChild(nameSpan);
           mainArea.appendChild(statusSpan);
@@ -1500,34 +1568,41 @@
             var hourInput = document.createElement('input');
             hourInput.type = 'number';
             hourInput.className = 'hour-input';
-            hourInput.step = '0.5';
+            hourInput.step = '0.25';
             hourInput.min = '0';
             hourInput.value = getHours(emp.id, iso);
-            hourInput.title = 'この日の実働時間(所定8時間・超過分は残業として集計)';
+            hourInput.title = 'この日の実働時間(15分刻み・所定8時間、超過分は残業として集計)';
             hourInput.addEventListener('click', function(e){ e.stopPropagation(); });
             hourInput.addEventListener('change', function(){
               var v = parseFloat(hourInput.value);
+              if (!isNaN(v)) v = Math.round(v * 4) / 4;
+              hourInput.value = isNaN(v) ? '' : v;
               setHours(emp.id, iso, isNaN(v) ? null : Math.max(0, v));
               saveState();
               renderLaborSummary();
             });
             rowDiv.appendChild(hourInput);
           } else if (!readOnly && !working) {
-            var plBtn = document.createElement('button');
-            plBtn.type = 'button';
-            plBtn.className = 'pl-btn' + (onLeave ? ' cancel' : '');
-            plBtn.textContent = onLeave ? '取消' : '有給';
-            plBtn.title = onLeave ? '有給消化を取り消す(残日数を戻します)' : 'この日を有給消化にする(残日数を1減らします)';
-            if (!onLeave && (emp.paidLeaveBalance || 0) <= 0) plBtn.disabled = true;
-            plBtn.addEventListener('click', function(e){
-              e.stopPropagation();
-              if (onLeave) unmarkPaidLeave(emp, iso); else markPaidLeave(emp, iso);
+            var statusSelect = document.createElement('select');
+            statusSelect.className = 'status-select';
+            statusSelect.title = 'この日の休みの種類(休み・有給・欠勤)';
+            [['off', '休み'], ['leave', '有給'], ['absence', '欠勤']].forEach(function(opt){
+              var o = document.createElement('option');
+              o.value = opt[0];
+              o.textContent = opt[1];
+              if (opt[0] === 'leave' && subtype !== 'leave' && (emp.paidLeaveBalance || 0) <= 0) o.disabled = true;
+              if (opt[0] === subtype) o.selected = true;
+              statusSelect.appendChild(o);
+            });
+            statusSelect.addEventListener('click', function(e){ e.stopPropagation(); });
+            statusSelect.addEventListener('change', function(){
+              setOffSubtype(emp, iso, statusSelect.value);
               saveState();
               renderSchedule();
               renderEmployees();
               renderLaborSummary();
             });
-            rowDiv.appendChild(plBtn);
+            rowDiv.appendChild(statusSelect);
           }
 
           cell.appendChild(rowDiv);
