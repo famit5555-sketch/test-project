@@ -26,6 +26,8 @@
     --danger-soft: #FBE2DE;
     --rest: #3573C7;
     --rest-soft: #DCE8F7;
+    --leave: #8E44AD;
+    --leave-soft: #EEE0F5;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -52,6 +54,8 @@
       --danger-soft: #3A1D18;
       --rest: #6FA8E8;
       --rest-soft: #1B2E44;
+      --leave: #C08AE0;
+      --leave-soft: #33223D;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -75,6 +79,8 @@
     --danger-soft: #3A1D18;
     --rest: #6FA8E8;
     --rest-soft: #1B2E44;
+    --leave: #C08AE0;
+    --leave-soft: #33223D;
     --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
   }
 
@@ -321,6 +327,15 @@
   .summary-fill.warn { background: var(--warning); }
   .summary-count { font-size: 12.5px; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-soft); }
 
+  /* ---------- Labor / overtime ---------- */
+  .labor-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .labor-table th, .labor-table td { padding: 7px 8px; text-align: right; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .labor-table th:first-child, .labor-table td:first-child { text-align: left; }
+  .labor-table th { color: var(--ink-soft); font-weight: 700; font-size: 11px; }
+  .labor-table td.ot-warn { color: var(--warning); font-weight: 700; }
+  .labor-table tfoot td { border-bottom: none; padding-top: 5px; }
+  .pl-input { width: 48px; }
+
   /* ---------- Schedule ---------- */
   .schedule-scroll { overflow-x: auto; }
   .week-block { margin-bottom: 16px; }
@@ -329,27 +344,45 @@
     font-family: var(--font-display); font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
     color: var(--ink-soft); margin-bottom: 8px; text-transform: uppercase;
   }
-  .week-grid { display: grid; grid-template-columns: repeat(6, minmax(120px, 1fr)); gap: 8px; min-width: 780px; }
+  .week-grid { display: grid; grid-template-columns: repeat(6, minmax(136px, 1fr)); gap: 8px; min-width: 860px; }
   .day-cell { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
   .day-cell-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
   .day-cell-date { font-family: var(--font-display); font-size: 13.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
   .day-cell-date span { color: var(--ink-soft); font-weight: 500; }
   .shortage-badge { font-size: 10px; font-weight: 700; color: var(--warning); background: var(--warning-soft); border-radius: 999px; padding: 2px 7px; }
   .attend-row {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
     width: 100%; border: 1px solid var(--accent); border-radius: 8px;
-    background: var(--accent); padding: 7px 10px; font-family: var(--font-body);
-    text-align: left; cursor: pointer;
+    background: var(--accent); padding: 5px 6px 5px 10px; font-family: var(--font-body);
   }
-  .attend-row:hover { filter: brightness(1.05); }
-  .attend-row.readonly { cursor: default; }
-  .attend-row.readonly:hover { filter: none; }
-  .attend-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .attend-main {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    flex: 1; min-width: 0; border: none; background: transparent; padding: 2px 0;
+    font-family: var(--font-body); text-align: left; cursor: pointer;
+  }
+  .attend-row.readonly .attend-main { cursor: default; }
+  .attend-main:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   .attend-name { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); }
-  .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); }
+  .attend-status { font-size: 11px; font-weight: 700; color: var(--accent-ink); white-space: nowrap; }
   .attend-row.off { background: var(--rest-soft); border-color: var(--rest); }
   .attend-row.off .attend-name { color: var(--rest); }
   .attend-row.off .attend-status { color: var(--rest); }
+  .attend-row.leave { background: var(--leave-soft); border-color: var(--leave); }
+  .attend-row.leave .attend-name { color: var(--leave); }
+  .attend-row.leave .attend-status { color: var(--leave); }
+  .hour-input {
+    width: 40px; flex-shrink: 0; border: 1px solid rgba(255,255,255,0.6); border-radius: 5px;
+    background: rgba(255,255,255,0.35); color: var(--accent-ink); font-size: 11px; font-weight: 700;
+    padding: 3px 2px; text-align: center; font-variant-numeric: tabular-nums; font-family: var(--font-body);
+  }
+  .pl-btn {
+    flex-shrink: 0; border: 1px solid var(--rest); background: transparent; color: var(--rest);
+    font-size: 9.5px; font-weight: 700; padding: 3px 5px; border-radius: 999px; white-space: nowrap;
+    font-family: var(--font-body);
+  }
+  .pl-btn:hover { background: var(--rest-soft); }
+  .pl-btn.cancel { border-color: var(--leave); color: var(--leave); }
+  .pl-btn.cancel:hover { background: var(--leave-soft); }
 
   .empty-state { color: var(--ink-soft); font-size: 13px; padding: 30px 10px; text-align: center; }
   footer.note { margin-top: 22px; font-size: 11.5px; color: var(--ink-faint); text-align: center; }
@@ -392,6 +425,9 @@
     .attend-row .attend-name, .attend-row .attend-status { color: #000 !important; }
     .attend-row.off { background: #fff !important; border-color: #3573c7 !important; }
     .attend-row.off .attend-name, .attend-row.off .attend-status { color: #3573c7 !important; }
+    .attend-row.leave { background: #fff !important; border-color: #8E44AD !important; }
+    .attend-row.leave .attend-name, .attend-row.leave .attend-status { color: #8E44AD !important; }
+    .hour-input, .pl-btn { display: none !important; }
   }
 </style>
 </head>
@@ -479,6 +515,12 @@
           <div class="summary-grid" id="summaryGrid"></div>
         </section>
 
+        <section class="panel" id="laborPanel" style="margin-top:18px;">
+          <h2 style="margin-bottom:3px;">労務・残業集計</h2>
+          <p class="panel-sub">所定労働時間は1日8時間(休憩1時間別)。それを超えた分を残業として累計します。実働時間は勤務表の各出勤欄の時間数(既定8h)を編集すると反映されます。</p>
+          <div id="laborContainer"></div>
+        </section>
+
         <section class="panel" id="schedulePanel" style="margin-top:18px;">
           <h2 style="margin-bottom:14px;">勤務表</h2>
           <div id="scheduleContainer"></div>
@@ -540,7 +582,8 @@
 (function(){
   "use strict";
 
-  var STORAGE_KEY = 'famit-shift-v8';
+  var STORAGE_KEY = 'famit-shift-v9';
+  var STANDARD_DAILY_HOURS = 8;
   var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
   var MY_ID_KEY = 'famit-shift-my-id';
@@ -638,8 +681,8 @@
     return !!holidayCache[year][toISO(date)];
   }
 
-  function mkEmp(name, role, avail, weeklyMax, notes, priorityExtra){
-    return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || '', priorityExtra: !!priorityExtra};
+  function mkEmp(name, role, avail, weeklyMax, notes, priorityExtra, paidLeaveBalance){
+    return {id: uid(), name: name, role: role, avail: avail, weeklyMax: (weeklyMax==null?null:weeklyMax), notes: notes || '', priorityExtra: !!priorityExtra, paidLeaveBalance: (paidLeaveBalance==null?10:paidLeaveBalance)};
   }
 
   function emptyRequired(){ return {mon:0, tue:0, wed:0, thu:0, fri:0, sat:0, holiday:0}; }
@@ -652,15 +695,15 @@
       mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
-      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)'),
-      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)')
+      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)', false, 5),
+      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)', false, 3)
     ];
     var requiredByRole = {
       '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0, holidayIgnore:true}
     };
     var period = {start: getDefaultMonday(), weeks: 2};
-    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: []};
+    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: [], actualHours: {}, paidLeaveMarks: {}};
     var gen = generateAll(state.employees, state.requiredByRole, state.period.start, state.period.weeks);
     state.assignmentsByRole = gen.assignmentsByRole;
     state.warnings = gen.warnings;
@@ -668,12 +711,16 @@
   }
 
   function normalizeState(data){
+    var employees = Array.isArray(data.employees) ? data.employees : [];
+    employees.forEach(function(e){ if (e.paidLeaveBalance == null) e.paidLeaveBalance = 10; });
     return {
-      employees: Array.isArray(data.employees) ? data.employees : [],
+      employees: employees,
       requiredByRole: (data.requiredByRole && typeof data.requiredByRole === 'object') ? data.requiredByRole : {},
       period: (data.period && typeof data.period === 'object') ? data.period : {start: getDefaultMonday(), weeks: 2},
       assignmentsByRole: (data.assignmentsByRole && typeof data.assignmentsByRole === 'object') ? data.assignmentsByRole : {},
-      warnings: Array.isArray(data.warnings) ? data.warnings : []
+      warnings: Array.isArray(data.warnings) ? data.warnings : [],
+      actualHours: (data.actualHours && typeof data.actualHours === 'object') ? data.actualHours : {},
+      paidLeaveMarks: (data.paidLeaveMarks && typeof data.paidLeaveMarks === 'object') ? data.paidLeaveMarks : {}
     };
   }
 
@@ -764,6 +811,7 @@
     renderPeriodForm();
     renderSchedule();
     renderSummary();
+    renderLaborSummary();
     renderWarnings();
     renderRequestsAdmin();
     if (!document.getElementById('employeeView').hidden) renderEmployeeView();
@@ -992,6 +1040,84 @@
     return counts;
   }
 
+  // ---------- actual hours / overtime ----------
+  function getHours(empId, iso){
+    var v = state.actualHours && state.actualHours[empId] && state.actualHours[empId][iso];
+    return (v == null) ? STANDARD_DAILY_HOURS : v;
+  }
+  function setHours(empId, iso, hours){
+    if (!state.actualHours) state.actualHours = {};
+    if (!state.actualHours[empId]) state.actualHours[empId] = {};
+    if (hours == null || isNaN(hours)) { delete state.actualHours[empId][iso]; return; }
+    state.actualHours[empId][iso] = hours;
+  }
+
+  // ---------- paid leave (有給) ----------
+  function isPaidLeave(empId, iso){
+    return !!(state.paidLeaveMarks && state.paidLeaveMarks[empId] && state.paidLeaveMarks[empId][iso]);
+  }
+  function markPaidLeave(emp, iso){
+    if (isPaidLeave(emp.id, iso)) return;
+    if (!state.paidLeaveMarks) state.paidLeaveMarks = {};
+    if (!state.paidLeaveMarks[emp.id]) state.paidLeaveMarks[emp.id] = {};
+    state.paidLeaveMarks[emp.id][iso] = true;
+    emp.paidLeaveBalance = Math.max(0, (emp.paidLeaveBalance || 0) - 1);
+  }
+  function unmarkPaidLeave(emp, iso){
+    if (!isPaidLeave(emp.id, iso)) return;
+    delete state.paidLeaveMarks[emp.id][iso];
+    emp.paidLeaveBalance = (emp.paidLeaveBalance || 0) + 1;
+  }
+
+  function computeLaborSummary(){
+    var result = {};
+    state.employees.forEach(function(e){ result[e.id] = {days: 0, hours: 0, overtime: 0}; });
+    Object.keys(state.assignmentsByRole).forEach(function(role){
+      var assignments = state.assignmentsByRole[role];
+      Object.keys(assignments).forEach(function(iso){
+        assignments[iso].forEach(function(id){
+          if (!id || !result[id]) return;
+          var h = getHours(id, iso);
+          result[id].days++;
+          result[id].hours += h;
+          result[id].overtime += Math.max(0, h - STANDARD_DAILY_HOURS);
+        });
+      });
+    });
+    return result;
+  }
+
+  function renderLaborSummary(){
+    var box = document.getElementById('laborContainer');
+    if (!box) return;
+    box.innerHTML = '';
+    if (state.employees.length === 0) return;
+    var laborSummary = computeLaborSummary();
+    var table = document.createElement('table');
+    table.className = 'labor-table';
+    var thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th>氏名</th><th>出勤日数</th><th>実働時間</th><th>残業時間</th><th>有給残</th></tr>';
+    table.appendChild(thead);
+    var tbody = document.createElement('tbody');
+    var totalHours = 0, totalOT = 0, totalDays = 0;
+    state.employees.forEach(function(e){
+      var s = laborSummary[e.id] || {days:0, hours:0, overtime:0};
+      totalHours += s.hours; totalOT += s.overtime; totalDays += s.days;
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + e.name + '</td>' +
+        '<td>' + s.days + '日</td>' +
+        '<td>' + s.hours.toFixed(1) + 'h</td>' +
+        '<td class="' + (s.overtime > 0 ? 'ot-warn' : '') + '">' + s.overtime.toFixed(1) + 'h</td>' +
+        '<td>' + (e.paidLeaveBalance != null ? e.paidLeaveBalance + '日' : '–') + '</td>';
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    var tfoot = document.createElement('tfoot');
+    tfoot.innerHTML = '<tr><td>合計</td><td>' + totalDays + '日</td><td>' + totalHours.toFixed(1) + 'h</td><td>' + totalOT.toFixed(1) + 'h</td><td></td></tr>';
+    table.appendChild(tfoot);
+    box.appendChild(table);
+  }
+
   function empById(id){
     for (var i = 0; i < state.employees.length; i++) if (state.employees[i].id === id) return state.employees[i];
     return null;
@@ -1103,6 +1229,24 @@
       maxWrap.appendChild(maxLabel);
       maxWrap.appendChild(maxInput);
 
+      var plWrap = document.createElement('div');
+      plWrap.className = 'max-input-wrap';
+      var plLabel = document.createElement('label');
+      plLabel.textContent = '有給残';
+      var plInput = document.createElement('input');
+      plInput.type = 'number';
+      plInput.className = 'max-input';
+      plInput.min = '0';
+      plInput.value = emp.paidLeaveBalance != null ? emp.paidLeaveBalance : 10;
+      plInput.title = '有給休暇の残日数(手動で設定・勤務表の「有給消化」ボタンで自動的に減ります)';
+      plInput.addEventListener('input', function(){
+        emp.paidLeaveBalance = plInput.value === '' ? 0 : Math.max(0, parseInt(plInput.value, 10) || 0);
+        saveStateDebounced();
+      });
+      plInput.addEventListener('blur', function(){ saveState(); renderLaborSummary(); });
+      plWrap.appendChild(plLabel);
+      plWrap.appendChild(plInput);
+
       var priorityWrap = document.createElement('label');
       priorityWrap.className = 'priority-wrap';
       priorityWrap.title = '優先的に多めのシフトを割り当てます(週上限まで)';
@@ -1118,6 +1262,7 @@
 
       meta.appendChild(toggleGroup);
       meta.appendChild(maxWrap);
+      meta.appendChild(plWrap);
       meta.appendChild(priorityWrap);
 
       var notesInput = document.createElement('input');
@@ -1230,6 +1375,7 @@
     saveState();
     renderSchedule();
     renderSummary();
+    renderLaborSummary();
     renderWarnings();
   });
 
@@ -1256,6 +1402,7 @@
     if (idx !== -1) {
       arr[idx] = null;
     } else {
+      unmarkPaidLeave(emp, iso);
       var nullIdx = arr.indexOf(null);
       if (nullIdx !== -1) arr[nullIdx] = emp.id;
       else arr.push(emp.id);
@@ -1263,6 +1410,7 @@
     saveState();
     renderSchedule();
     renderSummary();
+    renderLaborSummary();
   }
 
   function buildWeeksInto(container, roles, assignmentsByRole, readOnly){
@@ -1322,28 +1470,67 @@
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
+          var onLeave = !working && isPaidLeave(emp.id, iso);
 
-          var rowBtn = document.createElement(readOnly ? 'div' : 'button');
-          if (!readOnly) rowBtn.type = 'button';
-          rowBtn.className = 'attend-row' + (working ? '' : ' off') + (readOnly ? ' readonly' : '');
+          var rowDiv = document.createElement('div');
+          rowDiv.className = 'attend-row' + (onLeave ? ' leave' : (working ? '' : ' off')) + (readOnly ? ' readonly' : '');
+
+          var mainArea = document.createElement(readOnly ? 'div' : 'button');
+          if (!readOnly) mainArea.type = 'button';
+          mainArea.className = 'attend-main';
 
           var nameSpan = document.createElement('span');
           nameSpan.className = 'attend-name';
           nameSpan.textContent = emp.name;
           var statusSpan = document.createElement('span');
           statusSpan.className = 'attend-status';
-          statusSpan.textContent = working ? '出勤' : '休み';
+          statusSpan.textContent = working ? '出勤' : (onLeave ? '有給' : '休み');
 
-          rowBtn.appendChild(nameSpan);
-          rowBtn.appendChild(statusSpan);
+          mainArea.appendChild(nameSpan);
+          mainArea.appendChild(statusSpan);
           if (!readOnly) {
-            rowBtn.title = 'クリックで出勤・休みを切り替え';
-            rowBtn.addEventListener('click', function(){
+            mainArea.title = 'クリックで出勤・休みを切り替え';
+            mainArea.addEventListener('click', function(){
               toggleAttendance(emp, iso);
             });
           }
+          rowDiv.appendChild(mainArea);
 
-          cell.appendChild(rowBtn);
+          if (!readOnly && working) {
+            var hourInput = document.createElement('input');
+            hourInput.type = 'number';
+            hourInput.className = 'hour-input';
+            hourInput.step = '0.5';
+            hourInput.min = '0';
+            hourInput.value = getHours(emp.id, iso);
+            hourInput.title = 'この日の実働時間(所定8時間・超過分は残業として集計)';
+            hourInput.addEventListener('click', function(e){ e.stopPropagation(); });
+            hourInput.addEventListener('change', function(){
+              var v = parseFloat(hourInput.value);
+              setHours(emp.id, iso, isNaN(v) ? null : Math.max(0, v));
+              saveState();
+              renderLaborSummary();
+            });
+            rowDiv.appendChild(hourInput);
+          } else if (!readOnly && !working) {
+            var plBtn = document.createElement('button');
+            plBtn.type = 'button';
+            plBtn.className = 'pl-btn' + (onLeave ? ' cancel' : '');
+            plBtn.textContent = onLeave ? '取消' : '有給';
+            plBtn.title = onLeave ? '有給消化を取り消す(残日数を戻します)' : 'この日を有給消化にする(残日数を1減らします)';
+            if (!onLeave && (emp.paidLeaveBalance || 0) <= 0) plBtn.disabled = true;
+            plBtn.addEventListener('click', function(e){
+              e.stopPropagation();
+              if (onLeave) unmarkPaidLeave(emp, iso); else markPaidLeave(emp, iso);
+              saveState();
+              renderSchedule();
+              renderEmployees();
+              renderLaborSummary();
+            });
+            rowDiv.appendChild(plBtn);
+          }
+
+          cell.appendChild(rowDiv);
         });
 
         if (!anySlots) {
@@ -1643,6 +1830,7 @@
   renderPeriodForm();
   renderSchedule();
   renderSummary();
+  renderLaborSummary();
   renderWarnings();
   renderRequestsAdmin();
 
