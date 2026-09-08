@@ -1470,7 +1470,7 @@
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
-          var onLeave = !working && isPaidLeave(emp.id, iso);
+          var onLeave = !working && !readOnly && isPaidLeave(emp.id, iso);
 
           var rowDiv = document.createElement('div');
           rowDiv.className = 'attend-row' + (onLeave ? ' leave' : (working ? '' : ' off')) + (readOnly ? ' readonly' : '');
