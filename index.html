@@ -492,9 +492,9 @@
 
         <section class="panel" id="periodPanel">
           <h2><span class="panel-num">3</span>月を決めて生成</h2>
-          <p class="panel-sub">対象月を指定すると、前月21日〜対象月20日までを1期間としてシフトを役割ごとに均等に割り振ります(日曜は全員固定休)。</p>
+          <p class="panel-sub">対象月を指定すると、対象月21日〜翌月20日までを1期間としてシフトを役割ごとに均等に割り振ります(日曜は全員固定休)。</p>
           <div class="field">
-            <label for="monthInput">対象月(前月21日〆〜当月20日)</label>
+            <label for="monthInput">対象月(当月21日〆〜翌月20日)</label>
             <input type="month" id="monthInput">
           </div>
           <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
@@ -935,14 +935,14 @@
   }
 
   // ---------- generation algorithm ----------
-  // Generates one 締め (closing-date) cycle: the 21st of the previous
-  // month through the 20th of the selected month. Sundays are always a
+  // Generates one 締め (closing-date) cycle: the 21st of the selected
+  // month through the 20th of the following month. Sundays are always a
   // fixed day off for everyone and are recorded as an empty assignment;
   // the weekly cap resets every Monday.
   function getCycleBounds(monthStr){
     var parts = monthStr.split('-');
     var year = parseInt(parts[0], 10), month = parseInt(parts[1], 10);
-    return {start: new Date(year, month - 2, 21), end: new Date(year, month - 1, 20)};
+    return {start: new Date(year, month - 1, 21), end: new Date(year, month, 20)};
   }
 
   function generateForRole(employees, required, monthStr, guaranteeMin){
