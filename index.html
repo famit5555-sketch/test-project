@@ -471,9 +471,9 @@
       <!-- LEFT: settings -->
       <div class="settings-col no-print">
         <section class="panel" id="requestsAdminPanel">
-          <h2 id="requestsAdminTitle">社員からの希望</h2>
-          <p class="panel-sub">スマホから送られた休み希望・遅刻早退希望などがここに届きます。</p>
-          <div id="requestsAdminList"></div>
+          <h2>社員からの希望</h2>
+          <p class="panel-sub">社員はGoogleフォームから休み希望・遅刻早退希望を送信します。回答は下のスプレッドシートに自動で集計されます(新着はメール通知もされます)。</p>
+          <a class="btn btn-primary" href="https://docs.google.com/spreadsheets/d/1E2xuAO9GkZMB5ESdNPecKye0FQG842WBrHxCYeg6c3Y/edit?resourcekey=&gid=1616772266#gid=1616772266" target="_blank" rel="noopener" style="width:100%; justify-content:center;">📄 回答スプレッドシートを開く</a>
         </section>
 
         <section class="panel" id="employeePanel">
@@ -534,43 +534,11 @@
       <div id="employeeScheduleContainer"></div>
     </section>
 
-    <section class="panel" id="whoAmIPanel" style="margin-top:16px;">
-      <h2>あなたの氏名</h2>
-      <select id="whoAmISelect"></select>
-      <p class="panel-sub" style="margin:8px 0 0;">氏名を選ぶと、希望フォームが表示されます。</p>
+    <section class="panel" id="requestFormPanel" style="margin-top:16px;">
+      <h2>希望を出す</h2>
+      <p class="panel-sub">休み希望・遅刻希望・早退希望などは、下のボタンから専用フォームで送信してください。</p>
+      <a class="btn btn-primary" id="reqFormLink" href="https://docs.google.com/forms/d/1e7wTYbuT-5Vt_stjrpZRktVK-gTxp8S_uz15uBvxHGk/viewform" target="_blank" rel="noopener" style="width:100%; justify-content:center;">📝 希望を送る(フォームを開く)</a>
     </section>
-
-    <div id="employeeContent" hidden>
-
-      <section class="panel" id="requestFormPanel" style="margin-top:16px;">
-        <h2>希望を出す</h2>
-        <p class="panel-sub">シフトが確定する前でも、確定した後でも、いつでも送れます。</p>
-        <div class="field">
-          <label for="reqDate">日付</label>
-          <input type="date" id="reqDate">
-        </div>
-        <div class="field">
-          <label for="reqType">種類</label>
-          <select id="reqType">
-            <option value="休み希望">休み希望</option>
-            <option value="遅刻希望">遅刻希望</option>
-            <option value="早退希望">早退希望</option>
-            <option value="その他">その他</option>
-          </select>
-        </div>
-        <div class="field">
-          <label for="reqNote">メモ(任意)</label>
-          <textarea id="reqNote" rows="2"></textarea>
-        </div>
-        <button class="btn btn-primary" id="reqSubmitBtn" type="button" style="width:100%; justify-content:center;">希望を送信</button>
-        <p class="panel-hint" id="reqStatusMsg" hidden></p>
-      </section>
-
-      <section class="panel" id="myRequestsPanel" style="margin-top:16px;">
-        <h2>提出した希望</h2>
-        <div id="myRequestsList"></div>
-      </section>
-    </div>
   </div>
 
   <footer class="note">株式会社ファミット 配送シフト管理ツール ・ <span id="storageNote">保存先を確認しています…</span></footer>
@@ -582,9 +550,7 @@
 
   var STORAGE_KEY = 'famit-shift-v10';
   var STANDARD_DAILY_HOURS = 8;
-  var REQUESTS_KEY = 'famit-shift-requests-v1';
   var MODE_KEY = 'famit-shift-mode';
-  var MY_ID_KEY = 'famit-shift-my-id';
   var ROLE_MIN_ONE = {'配送': true};
   var DAYS = [
     {key:'mon', label:'月'},
@@ -729,14 +695,10 @@
   }
 
   var state = loadState();
-  var requestsCache = (function(){
-    try { return JSON.parse(localStorage.getItem(REQUESTS_KEY)) || []; } catch (e) { return []; }
-  })();
 
   // ---------- shared-database wiring (graceful no-op if unavailable) ----------
   var usingDb = false;
   var stateDocRef = null;
-  var requestsColRef = null;
   var lastKnownStateJSON = JSON.stringify(state);
   var saveDebounceTimer = null;
 
@@ -774,32 +736,6 @@
     saveDebounceTimer = setTimeout(saveState, 500);
   }
 
-  function saveLocalRequests(){ try { localStorage.setItem(REQUESTS_KEY, JSON.stringify(requestsCache)); } catch (e) {} }
-
-  function addRequest(reqData){
-    if (usingDb && requestsColRef) return requestsColRef.add(reqData);
-    reqData.id = uid();
-    requestsCache.push(reqData);
-    saveLocalRequests();
-    renderRequestsAdmin();
-    renderEmployeeView();
-    return Promise.resolve();
-  }
-  function updateRequestStatus(id, status){
-    if (usingDb && requestsColRef) return requestsColRef.doc(id).update({status: status}).catch(handleStateWriteError);
-    var r = requestsCache.filter(function(x){ return x.id === id; })[0];
-    if (r) { r.status = status; saveLocalRequests(); renderRequestsAdmin(); renderEmployeeView(); }
-    return Promise.resolve();
-  }
-  function deleteRequestById(id){
-    if (usingDb && requestsColRef) return requestsColRef.doc(id).delete().catch(handleStateWriteError);
-    requestsCache = requestsCache.filter(function(x){ return x.id !== id; });
-    saveLocalRequests();
-    renderRequestsAdmin();
-    renderEmployeeView();
-    return Promise.resolve();
-  }
-
   function renderAll(){
     ensureRequiredForRoles();
     renderEmployees();
@@ -809,7 +745,6 @@
     renderSummary();
     renderLaborSummary();
     renderWarnings();
-    renderRequestsAdmin();
     if (!document.getElementById('employeeView').hidden) renderEmployeeView();
   }
 
@@ -825,7 +760,6 @@
       usingDb = true;
       if (noteEl) noteEl.textContent = '同じ組織のサインイン済みメンバー間でオンライン共有されます。';
       stateDocRef = db.doc('state/app');
-      requestsColRef = db.collection('requests');
 
       stateDocRef.onSnapshot(function(snap){
         if (!snap.exists) {
@@ -841,18 +775,6 @@
         renderAll();
       }, function(err){
         if (err && err.code !== 'unavailable') showBanner('データの同期でエラーが発生しました。');
-      });
-
-      requestsColRef.orderBy('date', 'asc').onSnapshot(function(qsnap){
-        requestsCache = qsnap.docs.map(function(d){
-          var body = d.data() || {};
-          body.id = d.id;
-          return body;
-        });
-        renderRequestsAdmin();
-        renderEmployeeView();
-      }, function(err){
-        if (err && err.code !== 'unavailable') showBanner('希望リストの同期でエラーが発生しました。');
       });
     }).catch(function(){
       var noteEl = document.getElementById('storageNote');
@@ -1725,166 +1647,18 @@
     showBanner('初期設定に戻しました。');
   });
 
-  // ---------- requests: shared rendering ----------
-  function buildRequestItem(r, isAdmin){
-    var item = document.createElement('div');
-    item.className = 'request-item';
-
-    var head = document.createElement('div');
-    head.className = 'request-item-head';
-    var titleEl = document.createElement('span');
-    titleEl.className = 'request-item-title';
-    var d = fromISO(r.date);
-    titleEl.textContent = (isAdmin ? (r.employeeName + ' ・ ') : '') + (d.getMonth()+1) + '/' + d.getDate() + ' ・ ' + r.type;
-    var badge = document.createElement('span');
-    badge.className = 'request-badge ' + (r.status === 'done' ? 'done' : 'pending');
-    badge.textContent = r.status === 'done' ? '確認済み' : '未確認';
-    head.appendChild(titleEl);
-    head.appendChild(badge);
-    item.appendChild(head);
-
-    if (r.note) {
-      var note = document.createElement('p');
-      note.className = 'request-note';
-      note.textContent = r.note;
-      item.appendChild(note);
-    }
-
-    var meta = document.createElement('p');
-    meta.className = 'request-meta';
-    var sentAt = r.submittedAt ? new Date(r.submittedAt) : null;
-    meta.textContent = '送信: ' + (sentAt && !isNaN(sentAt) ? sentAt.toLocaleString('ja-JP') : '-');
-    item.appendChild(meta);
-
-    if (isAdmin) {
-      var actions = document.createElement('div');
-      actions.className = 'request-actions';
-      var toggleBtn = document.createElement('button');
-      toggleBtn.type = 'button';
-      toggleBtn.className = 'btn btn-sm';
-      toggleBtn.textContent = r.status === 'done' ? '未確認に戻す' : '確認済みにする';
-      toggleBtn.addEventListener('click', function(){ updateRequestStatus(r.id, r.status === 'done' ? 'pending' : 'done'); });
-      var delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'btn btn-sm btn-danger';
-      delBtn.textContent = '削除';
-      delBtn.addEventListener('click', function(){ if (confirm('この希望を削除しますか?')) deleteRequestById(r.id); });
-      actions.appendChild(toggleBtn);
-      actions.appendChild(delBtn);
-      item.appendChild(actions);
-    }
-
-    return item;
-  }
-
-  function renderRequestsAdmin(){
-    var list = document.getElementById('requestsAdminList');
-    var titleEl = document.getElementById('requestsAdminTitle');
-    if (!list) return;
-    list.innerHTML = '';
-    var pending = requestsCache.filter(function(r){ return r.status !== 'done'; }).length;
-    if (titleEl) titleEl.textContent = '社員からの希望' + (pending > 0 ? '(' + pending + '件 未確認)' : '');
-    if (requestsCache.length === 0) {
-      var p = document.createElement('p');
-      p.className = 'panel-sub';
-      p.style.margin = '0';
-      p.textContent = 'まだ希望はありません。';
-      list.appendChild(p);
-      return;
-    }
-    requestsCache.slice().sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); })
-      .forEach(function(r){ list.appendChild(buildRequestItem(r, true)); });
-  }
-
   // ---------- employee (mobile) view ----------
-  function getMyId(){ try { return localStorage.getItem(MY_ID_KEY) || ''; } catch (e) { return ''; } }
-  function setMyId(id){ try { localStorage.setItem(MY_ID_KEY, id); } catch (e) {} }
-
+  // Requests (休み希望 etc.) are handled entirely by an external Google
+  // Form + Sheet now, not by this app, so there's nothing to load here
+  // beyond the read-only schedule.
   function renderEmployeeSchedule(){
     var target = document.getElementById('employeeScheduleContainer');
     if (target) renderScheduleInto(target, true);
   }
 
-  function renderMyRequests(emp){
-    var list = document.getElementById('myRequestsList');
-    list.innerHTML = '';
-    var mine = requestsCache.filter(function(r){ return r.employeeId === emp.id; })
-      .sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
-    if (mine.length === 0) {
-      var p = document.createElement('p');
-      p.className = 'panel-sub';
-      p.style.margin = '0';
-      p.textContent = 'まだ希望を送っていません。';
-      list.appendChild(p);
-      return;
-    }
-    mine.forEach(function(r){ list.appendChild(buildRequestItem(r, false)); });
-  }
-
   function renderEmployeeView(){
-    var sel = document.getElementById('whoAmISelect');
-    var myId = getMyId();
-    sel.innerHTML = '';
-    var blankOpt = document.createElement('option');
-    blankOpt.value = '';
-    blankOpt.textContent = '選択してください';
-    sel.appendChild(blankOpt);
-    state.employees.forEach(function(e){
-      var opt = document.createElement('option');
-      opt.value = e.id;
-      opt.textContent = e.name;
-      if (e.id === myId) opt.selected = true;
-      sel.appendChild(opt);
-    });
-    var content = document.getElementById('employeeContent');
-    var emp = empById(myId);
-    content.hidden = !emp;
     renderEmployeeSchedule();
-    if (emp) {
-      renderMyRequests(emp);
-    }
   }
-
-  document.getElementById('whoAmISelect').addEventListener('change', function(){
-    setMyId(this.value);
-    renderEmployeeView();
-  });
-
-  function showReqStatus(msg, isError){
-    var el = document.getElementById('reqStatusMsg');
-    el.textContent = msg;
-    el.style.color = isError ? 'var(--warning)' : 'var(--success)';
-    el.hidden = false;
-    clearTimeout(showReqStatus._t);
-    showReqStatus._t = setTimeout(function(){ el.hidden = true; }, 4000);
-  }
-
-  document.getElementById('reqSubmitBtn').addEventListener('click', function(){
-    var emp = empById(getMyId());
-    if (!emp) { alert('先に氏名を選択してください。'); return; }
-    var dateVal = document.getElementById('reqDate').value;
-    if (!dateVal) { alert('日付を選択してください。'); return; }
-    var typeVal = document.getElementById('reqType').value;
-    var noteVal = document.getElementById('reqNote').value.trim();
-    var btn = this;
-    btn.disabled = true;
-    addRequest({
-      employeeId: emp.id,
-      employeeName: emp.name,
-      date: dateVal,
-      type: typeVal,
-      note: noteVal,
-      status: 'pending',
-      submittedAt: new Date().toISOString()
-    }).then(function(){
-      btn.disabled = false;
-      document.getElementById('reqNote').value = '';
-      showReqStatus('希望を送信しました。', false);
-    }).catch(function(){
-      btn.disabled = false;
-      showReqStatus('送信に失敗しました。時間をおいて再度お試しください。', true);
-    });
-  });
 
   // A link shared with employees (e.g. via LINE) can carry ?view=employee
   // to open straight into the read-only employee screen with the
@@ -1919,7 +1693,6 @@
   renderSummary();
   renderLaborSummary();
   renderWarnings();
-  renderRequestsAdmin();
 
   var initialMode = 'admin';
   if (EMPLOYEE_LOCKED) {
