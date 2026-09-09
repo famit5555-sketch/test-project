@@ -310,6 +310,17 @@
   }
   .field textarea { resize: vertical; font-variant-numeric: normal; }
   .generate-btn { width: 100%; justify-content: center; padding: 11px; font-size: 14px; }
+  .cycle-info {
+    display: flex; gap: 8px; margin-bottom: 12px;
+  }
+  .cycle-info .stat {
+    flex: 1; text-align: center; background: var(--surface-2); border: 1px solid var(--line);
+    border-radius: 9px; padding: 8px 4px;
+  }
+  .cycle-info .stat .stat-num { font-family: var(--font-display); font-size: 20px; font-weight: 700; color: var(--ink); display: block; font-variant-numeric: tabular-nums; }
+  .cycle-info .stat .stat-label { font-size: 10.5px; color: var(--ink-soft); }
+  .cycle-info .stat.off .stat-num { color: var(--rest); }
+  .cycle-info .stat.work .stat-num { color: var(--accent); }
   .warn-list { margin-top: 12px; padding: 10px 12px; background: var(--warning-soft); border: 1px solid var(--warning); border-radius: 9px; font-size: 12px; color: var(--ink); }
   .warn-list strong { color: var(--warning); display: block; margin-bottom: 4px; font-size: 12px; }
   .warn-list ul { margin: 0; padding-left: 18px; }
@@ -487,7 +498,7 @@
         <section class="panel" id="requiredPanel">
           <h2><span class="panel-num">2</span>役割ごとの曜日別必要人数</h2>
           <p class="panel-sub">役割ごとに、その曜日の配送・作業に必要な人数を設定します。数値は自由に編集できます。</p>
-          <button class="btn btn-sm" id="autoBalanceBtn" type="button" style="margin-bottom:14px;">⚖ 自動計算(全員が週5日になるように)</button>
+          <button class="btn btn-sm" id="autoBalanceBtn" type="button" style="margin-bottom:14px;">⚖ 自動計算(対象期間の土日祝を考慮して均等に)</button>
           <div id="requiredByRole"></div>
         </section>
 
@@ -498,6 +509,7 @@
             <label for="monthInput">対象月(当月21日〆〜翌月20日)</label>
             <input type="month" id="monthInput">
           </div>
+          <div class="cycle-info" id="cycleInfoBox"></div>
           <button class="btn btn-primary generate-btn" id="generateBtn" type="button">⟳ シフトを自動生成</button>
           <div class="warn-list" id="warnList" hidden></div>
         </section>
@@ -803,54 +815,101 @@
     });
   }
 
-  // Best-effort heuristic: give each employee a weekly target (their
-  // weeklyMax if set, else however many days they're available, capped
-  // at their own availability). Start every day at full attendance
-  // (everyone available works), then if the roster's weekly target is
-  // short of that, trim the gap starting with Wednesday/Thursday first
-  // (spilling to Friday/Tuesday/Monday, Saturday last) so Saturday stays
-  // as staffed as possible. Holidays are treated like Saturday.
+  // Best-effort heuristic, aware of the actual selected 21日〆〜20日 cycle:
+  // give each standard employee (weeklyMax set) a cycle-total target of
+  // "cycle length minus Saturdays/Sundays/holidays" workdays (their share
+  // of the shared Saturday/holiday rotation banks as time off elsewhere
+  // in the cycle, rather than stacking on top of a full 5-day week).
+  // Start every regular weekday at full attendance, then if the roster's
+  // cycle-total capacity is short of that, trim the gap starting with
+  // Wednesday/Thursday first (spilling to Friday/Tuesday/Monday, Saturday
+  // last) so Saturday stays as staffed as possible. Holidays are treated
+  // like Saturday.
   var REDUCE_PRIORITY = ['wed', 'thu', 'fri', 'tue', 'mon', 'sat'];
-  function autoCalcRequired(role){
+  function autoCalcRequiredForCycle(role, monthStr){
     var emps = state.employees.filter(function(e){ return (e.role || '未設定') === role; });
     var floor = ROLE_MIN_ONE[role] ? 1 : 0;
     if (emps.length === 0) return emptyRequired();
 
+    var bounds = getCycleBounds(monthStr);
+    var cycleWorkTarget = computeCycleDayInfo(monthStr).workdays;
+    var regularCount = {}; DAYS.forEach(function(d){ regularCount[d.key] = 0; });
+    var holidayByWeekday = {}; DAYS.forEach(function(d){ holidayByWeekday[d.key] = 0; });
+    for (var cur = bounds.start; cur <= bounds.end; cur = addDays(cur, 1)) {
+      var jsDay = cur.getDay();
+      if (jsDay === 0) continue;
+      var dayKey = DAYS[jsDay - 1].key;
+      if (isJapaneseHoliday(cur)) holidayByWeekday[dayKey]++;
+      else regularCount[dayKey]++;
+    }
+
+    var holidayTotal = DAYS.reduce(function(s, d){ return s + holidayByWeekday[d.key]; }, 0);
     var availCount = {}; DAYS.forEach(function(d){ availCount[d.key] = 0; });
     var capacity = 0;
     emps.forEach(function(e){
-      var availDays = DAYS.filter(function(d){ return e.avail[d.key]; }).map(function(d){ return d.key; });
-      availDays.forEach(function(k){ availCount[k]++; });
-      var target = e.weeklyMax != null ? Math.min(e.weeklyMax, availDays.length) : availDays.length;
+      var availKeys = DAYS.filter(function(d){ return e.avail[d.key]; }).map(function(d){ return d.key; });
+      availKeys.forEach(function(k){ availCount[k]++; });
+      var availDaysInCycle = availKeys.reduce(function(s, k){ return s + regularCount[k] + holidayByWeekday[k]; }, 0);
+      // Size demand assuming everyone (including flexible/no-cap staff)
+      // shares the same cycle target — otherwise the sizing pass over-
+      // relies on their theoretical max availability, which the actual
+      // day-by-day fill (paced evenly) won't realistically reach either.
+      var target = Math.min(cycleWorkTarget, availDaysInCycle);
       capacity += target;
     });
+    // A holiday can land on any weekday, so its eligible headcount is
+    // capped by the tightest weekday it actually falls on this cycle.
+    var holidayAvailCount = holidayTotal > 0
+      ? Math.min.apply(null, DAYS.filter(function(d){ return holidayByWeekday[d.key] > 0; }).map(function(d){ return availCount[d.key]; }))
+      : 0;
+
+    // Even for roles without a "always ≥1" floor, never trim a day to 0
+    // if someone is actually available that day — a role with a single
+    // employee (like 倉庫整理) would otherwise vanish entirely on
+    // whichever days absorb the biggest cut.
+    var dayFloor = function(avail){ return Math.max(floor, avail > 0 ? 1 : 0); };
 
     var result = {};
     DAYS.forEach(function(d){ result[d.key] = availCount[d.key]; });
-    var totalAvailSlots = DAYS.reduce(function(s, d){ return s + availCount[d.key]; }, 0);
-    var shortfall = Math.max(0, totalAvailSlots - capacity);
+    var resultHoliday = holidayAvailCount;
+    var totalSlots = DAYS.reduce(function(s, d){ return s + availCount[d.key] * regularCount[d.key]; }, 0)
+      + holidayAvailCount * holidayTotal;
+    var shortfall = Math.max(0, totalSlots - capacity);
 
-    REDUCE_PRIORITY.forEach(function(key){
-      if (shortfall <= 0) return;
-      var reducible = Math.max(0, result[key] - floor);
-      var cut = Math.min(reducible, shortfall);
-      result[key] -= cut;
-      shortfall -= cut;
-    });
+    // Remove one person at a time from each eligible day (in priority
+    // order) per pass, rather than fully draining one day before the
+    // next — a day can recur a different number of times in the cycle,
+    // so draining a whole day in one go would cut unevenly. Holidays are
+    // trimmed alongside Saturday, last.
+    var priorityKeys = REDUCE_PRIORITY.concat(['holiday']);
+    var canReduceMore = true;
+    while (shortfall > 0 && canReduceMore) {
+      canReduceMore = false;
+      for (var pi = 0; pi < priorityKeys.length && shortfall > 0; pi++) {
+        var key = priorityKeys[pi];
+        if (key === 'holiday') {
+          if (holidayTotal > 0 && resultHoliday > dayFloor(holidayAvailCount)) {
+            resultHoliday -= 1;
+            shortfall -= holidayTotal;
+            canReduceMore = true;
+          }
+        } else if (regularCount[key] > 0 && result[key] > dayFloor(availCount[key])) {
+          result[key] -= 1;
+          shortfall -= regularCount[key];
+          canReduceMore = true;
+        }
+      }
+    }
 
-    DAYS.forEach(function(d){ result[d.key] = Math.max(floor, result[d.key]); });
-    // A holiday can land on any weekday, so use the lightest weekday
-    // number here (never the busiest) — otherwise a holiday landing on
-    // a normally-light day can push that week's total past everyone's
-    // weekly cap and starve a later day (typically Saturday) instead.
-    result.holiday = Math.max(floor, Math.min.apply(null, DAYS.map(function(d){ return result[d.key]; })));
+    DAYS.forEach(function(d){ result[d.key] = Math.max(dayFloor(availCount[d.key]), result[d.key]); });
+    result.holiday = Math.max(dayFloor(holidayAvailCount), resultHoliday);
     return result;
   }
 
   function autoBalanceAllRoles(){
     getActiveRoles().forEach(function(role){
       var hadHolidayIgnore = state.requiredByRole[role] && state.requiredByRole[role].holidayIgnore;
-      state.requiredByRole[role] = autoCalcRequired(role);
+      state.requiredByRole[role] = autoCalcRequiredForCycle(role, state.period.month);
       if (hadHolidayIgnore) state.requiredByRole[role].holidayIgnore = true;
     });
     saveState();
@@ -868,32 +927,60 @@
     return {start: new Date(year, month - 1, 21), end: new Date(year, month, 20)};
   }
 
+  // Day-type breakdown for a cycle: how many Saturdays/Sundays/holidays
+  // (all a fixed or rotating day off) versus regular weekdays it contains.
+  function computeCycleDayInfo(monthStr){
+    var bounds = getCycleBounds(monthStr);
+    var total = 0, offDays = 0, sun = 0, sat = 0, holiday = 0;
+    for (var cur = bounds.start; cur <= bounds.end; cur = addDays(cur, 1)) {
+      total++;
+      var jsDay = cur.getDay();
+      var isHoliday = isJapaneseHoliday(cur);
+      if (jsDay === 0) sun++;
+      else if (jsDay === 6) sat++;
+      if (isHoliday) holiday++;
+      if (jsDay === 0 || jsDay === 6 || isHoliday) offDays++;
+    }
+    return {start: bounds.start, end: bounds.end, total: total, sun: sun, sat: sat, holiday: holiday, offDays: offDays, workdays: total - offDays};
+  }
+
   function generateForRole(employees, required, monthStr, guaranteeMin){
     var assignments = {};
     var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
     var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
     var warnings = [];
     var bounds = getCycleBounds(monthStr);
-    var weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; });
+    // Employees with a weeklyMax set follow the standard rotation: their
+    // cap is the whole cycle's regular-weekday count (cycle length minus
+    // Saturdays/Sundays/holidays), not a per-calendar-week limit, so that
+    // Saturday/holiday duty is absorbed as time off elsewhere in the cycle
+    // rather than stacked on top of a full 5-day week.
+    var cycleInfo = computeCycleDayInfo(monthStr);
+    var cycleWorkTarget = cycleInfo.workdays;
+    var totalNonSundayDays = Math.max(1, cycleInfo.total - cycleInfo.sun);
     var dayIndex = 0;
 
     for (var cur = bounds.start; cur <= bounds.end; cur = addDays(cur, 1)) {
       var iso = toISO(cur);
       var jsDay = cur.getDay();
       if (jsDay === 0) { assignments[iso] = []; continue; }
-      if (jsDay === 1) { weeklyCount = {}; employees.forEach(function(e){ weeklyCount[e.id] = 0; }); }
       var dayKey = DAYS[jsDay - 1].key;
       var dayLabel = DAYS[jsDay - 1].label;
       var isHoliday = !required.holidayIgnore && required.holiday != null && isJapaneseHoliday(cur);
       var need = isHoliday ? required.holiday : (required[dayKey] || 0);
+      // Everyone's cycle-total budget spent evenly across the cycle
+      // instead of front-loaded, so nobody exhausts their days off early
+      // and leaves the tail of the cycle unstaffed.
+      var paceTarget = cycleWorkTarget * ((dayIndex + 1) / totalNonSundayDays);
 
       var candidates = employees.filter(function(e){
-        return e.avail[dayKey] && (e.weeklyMax == null || weeklyCount[e.id] < e.weeklyMax);
+        return e.avail[dayKey] && (e.weeklyMax == null || totalCount[e.id] < cycleWorkTarget);
       });
       candidates = shuffle(candidates);
       candidates.sort(function(a, b){
         var pa = a.priorityExtra ? 0 : 1, pb = b.priorityExtra ? 0 : 1;
-        return (pa - pb) || (totalCount[a.id] - totalCount[b.id]) || (lastIndex[a.id] - lastIndex[b.id]);
+        var paceA = totalCount[a.id] - paceTarget, paceB = totalCount[b.id] - paceTarget;
+        return (pa - pb) || (paceA - paceB) || (lastIndex[a.id] - lastIndex[b.id]);
       });
 
       var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
@@ -919,7 +1006,7 @@
 
       assignments[iso] = chosen;
       chosen.forEach(function(id){
-        if (id) { totalCount[id]++; weeklyCount[id]++; lastIndex[id] = dayIndex; }
+        if (id) { totalCount[id]++; lastIndex[id] = dayIndex; }
       });
       if (chosen.indexOf(null) !== -1) {
         warnings.push({date: iso, dayLabel: dayLabel, need: need, filled: chosen.filter(Boolean).length, holiday: isHoliday});
@@ -1312,12 +1399,24 @@
 
   // ---------- period form ----------
   var monthInputEl = document.getElementById('monthInput');
+  var cycleInfoBoxEl = document.getElementById('cycleInfoBox');
+  function renderCycleInfo(){
+    if (!cycleInfoBoxEl) return;
+    var info = computeCycleDayInfo(state.period.month);
+    var f = info.start, l = info.end;
+    cycleInfoBoxEl.innerHTML =
+      '<div class="stat"><span class="stat-num">' + (f.getMonth()+1) + '/' + f.getDate() + '〜' + (l.getMonth()+1) + '/' + l.getDate() + '</span><span class="stat-label">対象期間(' + info.total + '日間)</span></div>' +
+      '<div class="stat off"><span class="stat-num">' + info.offDays + '日</span><span class="stat-label">土日祝日 合計</span></div>' +
+      '<div class="stat work"><span class="stat-num">' + info.workdays + '日</span><span class="stat-label">出勤日(平日)</span></div>';
+  }
   function renderPeriodForm(){
     monthInputEl.value = state.period.month;
+    renderCycleInfo();
   }
   monthInputEl.addEventListener('change', function(){
     if (monthInputEl.value) state.period.month = monthInputEl.value;
     saveState();
+    renderCycleInfo();
   });
 
   document.getElementById('generateBtn').addEventListener('click', function(){
