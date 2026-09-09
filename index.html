@@ -85,6 +85,7 @@
   }
 
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   body {
     background: var(--bg);
     color: var(--ink);
@@ -1885,15 +1886,24 @@
     });
   });
 
+  // A link shared with employees (e.g. via LINE) can carry ?view=employee
+  // to open straight into the read-only employee screen with the
+  // 管理者/社員 tab switcher hidden entirely, so it can't be tapped into
+  // by accident and there's nothing to explain.
+  var EMPLOYEE_LOCKED = (function(){
+    try { return /(^|[?&])view=employee(&|$)/.test(location.search); } catch (e) { return false; }
+  })();
+
   // ---------- mode switching ----------
   function setMode(mode){
+    if (EMPLOYEE_LOCKED) mode = 'employee';
     document.getElementById('adminView').hidden = mode !== 'admin';
     document.getElementById('employeeView').hidden = mode !== 'employee';
     document.getElementById('headerActions').hidden = mode === 'employee';
     Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
     });
-    try { localStorage.setItem(MODE_KEY, mode); } catch (e) {}
+    if (!EMPLOYEE_LOCKED) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) {} }
     if (mode === 'employee') renderEmployeeView();
   }
   Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
@@ -1912,10 +1922,16 @@
   renderRequestsAdmin();
 
   var initialMode = 'admin';
-  try {
-    var savedMode = localStorage.getItem(MODE_KEY);
-    if (savedMode === 'employee' || savedMode === 'admin') initialMode = savedMode;
-  } catch (e) {}
+  if (EMPLOYEE_LOCKED) {
+    initialMode = 'employee';
+    var tabsEl = document.querySelector('.mode-tabs');
+    if (tabsEl) tabsEl.hidden = true;
+  } else {
+    try {
+      var savedMode = localStorage.getItem(MODE_KEY);
+      if (savedMode === 'employee' || savedMode === 'admin') initialMode = savedMode;
+    } catch (e) {}
+  }
   setMode(initialMode);
 
   initDb();
