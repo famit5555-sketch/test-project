@@ -1598,12 +1598,13 @@
         var d = fromISO(iso);
         var dayDef = CAL_DAYS[idx];
         var isSunday = dayDef.key === 'sun';
+        var cellIsHoliday = !isSunday && isJapaneseHoliday(d);
 
         var head = document.createElement('div');
         head.className = 'day-cell-head';
         var dateEl = document.createElement('span');
         dateEl.className = 'day-cell-date';
-        dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + (isJapaneseHoliday(d) ? '・祝' : '') + ')</span>';
+        dateEl.innerHTML = (d.getMonth()+1) + '/' + d.getDate() + ' <span>(' + dayDef.label + (cellIsHoliday ? '・祝' : '') + ')</span>';
         head.appendChild(dateEl);
         cell.appendChild(head);
 
@@ -1630,7 +1631,11 @@
 
         var prevRole = null;
         state.employees.forEach(function(emp){
-          if (!emp.avail[dayDef.key]) return;
+          // A holiday overrides the weekday's own avail toggle — whoever
+          // is eligible is governed entirely by the dedicated 祝 toggle,
+          // matching the scheduling algorithm.
+          var isAvailToday = cellIsHoliday ? !!emp.avail.holiday : !!emp.avail[dayDef.key];
+          if (!isAvailToday) return;
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
