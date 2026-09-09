@@ -435,19 +435,28 @@
   }
 
   @media print {
+    @page { size: landscape; margin: 10mm; }
     body { background: #fff; color: #000; }
     .no-print { display: none !important; }
     .layout { grid-template-columns: 1fr; }
     .panel { box-shadow: none; border-color: #ccc; }
-    .week-grid { min-width: 0; }
-    .attend-row { border-color: #999; background: #fff !important; color: #000 !important; }
-    .attend-row .attend-name, .attend-row .attend-status { color: #000 !important; }
-    .attend-row.off { background: #fff !important; border-color: #3573c7 !important; }
-    .attend-row.off .attend-name, .attend-row.off .attend-status { color: #3573c7 !important; }
-    .attend-row.leave { background: #fff !important; border-color: #A9821A !important; }
-    .attend-row.leave .attend-name, .attend-row.leave .attend-status { color: #A9821A !important; }
-    .attend-row.absence { background: #fff !important; border-color: #C0392B !important; }
-    .attend-row.absence .attend-name, .attend-row.absence .attend-status { color: #C0392B !important; }
+    .schedule-scroll { overflow: visible; }
+    /* The screen layout gives each day column a 154px floor and lets the
+       row scroll sideways; a printed page can't scroll, so let columns
+       shrink to fit the page width instead of running off the right
+       edge, and tighten up spacing/type a bit to compensate. */
+    .week-grid { min-width: 0; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .day-cell { padding: 6px 5px; }
+    .attend-row { padding: 4px 4px 4px 6px; }
+    .attend-name { font-size: 10.5px; }
+    .attend-status { font-size: 9.5px; }
+    .day-cell-date { font-size: 11.5px; }
+    /* Keep the same solid, high-contrast colors as on screen (this is
+       mainly viewed as a PDF shared over LINE, not paper-printed, so
+       readability matters more than saving ink). */
+    .attend-row, .attend-row.off, .attend-row.leave, .attend-row.absence {
+      -webkit-print-color-adjust: exact; print-color-adjust: exact;
+    }
     .hour-input, .status-select { display: none !important; }
   }
 </style>
