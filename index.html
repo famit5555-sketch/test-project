@@ -1069,32 +1069,48 @@
       }
       dayIndex++;
     }
-    return {assignments: assignments, warnings: warnings};
+    return {assignments: assignments, warnings: warnings, totalCount: totalCount};
   }
 
   function generateAllOnce(employees, requiredByRole, monthStr){
     var roles = Object.keys(requiredByRole);
     var assignmentsByRole = {};
     var warnings = [];
+    var totalCount = {};
     roles.forEach(function(role){
       var roleEmployees = employees.filter(function(e){ return (e.role || '未設定') === role; });
       var result = generateForRole(roleEmployees, requiredByRole[role], monthStr, !!ROLE_MIN_ONE[role]);
       assignmentsByRole[role] = result.assignments;
       result.warnings.forEach(function(w){ w.role = role; warnings.push(w); });
+      Object.keys(result.totalCount).forEach(function(id){ totalCount[id] = result.totalCount[id]; });
     });
-    return {assignmentsByRole: assignmentsByRole, warnings: warnings};
+    return {assignmentsByRole: assignmentsByRole, warnings: warnings, totalCount: totalCount};
   }
 
   // The day-by-day greedy fill uses random tie-breaks, so an unlucky
   // early pick can occasionally leave a later day short even when the
-  // week's totals would allow a fully-staffed outcome. Try a handful of
-  // reshuffles and keep the one with the fewest (ideally zero) shortages.
+  // week's totals would allow a fully-staffed outcome — and even among
+  // equally shortage-free attempts, one person can end up notably more
+  // or less loaded than the rest just by luck of the shuffle. Try a
+  // batch of reshuffles and keep the one with the fewest shortages,
+  // breaking ties by whichever spreads workdays most evenly across the
+  // standard-rotation staff (weeklyMax set).
   function generateAll(employees, requiredByRole, monthStr){
-    var best = null;
+    var standardIds = employees.filter(function(e){ return e.weeklyMax != null; }).map(function(e){ return e.id; });
+    function spreadOf(attempt){
+      if (standardIds.length === 0) return 0;
+      var counts = standardIds.map(function(id){ return attempt.totalCount[id] || 0; });
+      return Math.max.apply(null, counts) - Math.min.apply(null, counts);
+    }
+    var best = null, bestSpread = Infinity;
     for (var i = 0; i < 30; i++) {
       var attempt = generateAllOnce(employees, requiredByRole, monthStr);
-      if (!best || attempt.warnings.length < best.warnings.length) best = attempt;
-      if (best.warnings.length === 0) break;
+      var spread = spreadOf(attempt);
+      if (!best || attempt.warnings.length < best.warnings.length ||
+          (attempt.warnings.length === best.warnings.length && spread < bestSpread)) {
+        best = attempt; bestSpread = spread;
+      }
+      if (best.warnings.length === 0 && bestSpread <= 1) break;
     }
     return best;
   }
