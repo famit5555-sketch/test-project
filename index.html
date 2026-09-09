@@ -433,6 +433,22 @@
     padding: 9px 18px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
     z-index: 1000; box-shadow: var(--shadow); max-width: 90vw; text-align: center;
   }
+  .readonly-banner {
+    background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning);
+    padding: 8px 14px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    text-align: center; margin-bottom: 14px;
+  }
+  /* Admin dashboard shared read-only: every control in #adminView is
+     inert. pointer-events blocks clicks/toggles/typing on mouse and
+     touch alike; the print/PDF button lives outside #adminView so it
+     stays usable. */
+  .admin-readonly #adminView input,
+  .admin-readonly #adminView select,
+  .admin-readonly #adminView textarea,
+  .admin-readonly #adminView button {
+    pointer-events: none !important;
+  }
+  .admin-readonly #adminView .attend-row .attend-main { cursor: default; }
 
   @media print {
     @page { size: landscape; margin: 10mm; }
@@ -1877,17 +1893,26 @@
   var EMPLOYEE_LOCKED = (function(){
     try { return /(^|[?&])view=employee(&|$)/.test(location.search); } catch (e) { return false; }
   })();
+  // A link shared with a second admin (view-only) can carry
+  // ?view=admin-readonly to open the full admin dashboard — settings,
+  // summary, labor totals, schedule — with every control disabled, so
+  // they can check on things from their own PC without risking an
+  // accidental edit that the main admin's PC never sees.
+  var ADMIN_READONLY = (function(){
+    try { return /(^|[?&])view=admin-readonly(&|$)/.test(location.search); } catch (e) { return false; }
+  })();
 
   // ---------- mode switching ----------
   function setMode(mode){
     if (EMPLOYEE_LOCKED) mode = 'employee';
+    if (ADMIN_READONLY) mode = 'admin';
     document.getElementById('adminView').hidden = mode !== 'admin';
     document.getElementById('employeeView').hidden = mode !== 'employee';
     document.getElementById('headerActions').hidden = mode === 'employee';
     Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
       btn.classList.toggle('active', btn.getAttribute('data-mode') === mode);
     });
-    if (!EMPLOYEE_LOCKED) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) {} }
+    if (!EMPLOYEE_LOCKED && !ADMIN_READONLY) { try { localStorage.setItem(MODE_KEY, mode); } catch (e) {} }
     if (mode === 'employee') renderEmployeeView();
   }
   Array.prototype.forEach.call(document.querySelectorAll('.mode-tab'), function(btn){
@@ -1909,6 +1934,17 @@
     initialMode = 'employee';
     var tabsEl = document.querySelector('.mode-tabs');
     if (tabsEl) tabsEl.hidden = true;
+  } else if (ADMIN_READONLY) {
+    initialMode = 'admin';
+    var tabsEl2 = document.querySelector('.mode-tabs');
+    if (tabsEl2) tabsEl2.hidden = true;
+    var resetBtnEl = document.getElementById('resetBtn');
+    if (resetBtnEl) resetBtnEl.hidden = true;
+    document.body.classList.add('admin-readonly');
+    var banner = document.createElement('div');
+    banner.className = 'readonly-banner no-print';
+    banner.textContent = '👁 閲覧専用モード(編集はできません)';
+    document.querySelector('.wrap').insertBefore(banner, document.querySelector('.wrap').firstChild);
   } else {
     try {
       var savedMode = localStorage.getItem(MODE_KEY);
