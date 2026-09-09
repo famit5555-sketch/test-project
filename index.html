@@ -949,6 +949,12 @@
     var assignments = {};
     var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
     var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
+    // Saturday and holiday duty is scarce (only a handful of each per
+    // cycle) and shared/rotating, so balance it on its own rather than
+    // leaving it to fall out of the overall pace — otherwise someone can
+    // end up with zero Saturdays purely by tie-break luck.
+    var satCount = {}; employees.forEach(function(e){ satCount[e.id] = 0; });
+    var holidayCount = {}; employees.forEach(function(e){ holidayCount[e.id] = 0; });
     var warnings = [];
     var bounds = getCycleBounds(monthStr);
     // Employees with a weeklyMax set follow the standard rotation: their
@@ -977,11 +983,13 @@
       var candidates = employees.filter(function(e){
         return e.avail[dayKey] && (e.weeklyMax == null || totalCount[e.id] < cycleWorkTarget);
       });
+      var catCount = isHoliday ? holidayCount : (dayKey === 'sat' ? satCount : null);
       candidates = shuffle(candidates);
       candidates.sort(function(a, b){
         var pa = a.priorityExtra ? 0 : 1, pb = b.priorityExtra ? 0 : 1;
+        var catA = catCount ? catCount[a.id] : 0, catB = catCount ? catCount[b.id] : 0;
         var paceA = totalCount[a.id] - paceTarget, paceB = totalCount[b.id] - paceTarget;
-        return (pa - pb) || (paceA - paceB) || (lastIndex[a.id] - lastIndex[b.id]);
+        return (pa - pb) || (catA - catB) || (paceA - paceB) || (lastIndex[a.id] - lastIndex[b.id]);
       });
 
       var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
@@ -1007,7 +1015,10 @@
 
       assignments[iso] = chosen;
       chosen.forEach(function(id){
-        if (id) { totalCount[id]++; lastIndex[id] = dayIndex; }
+        if (id) {
+          totalCount[id]++; lastIndex[id] = dayIndex;
+          if (isHoliday) holidayCount[id]++; else if (dayKey === 'sat') satCount[id]++;
+        }
       });
       if (chosen.indexOf(null) !== -1) {
         warnings.push({date: iso, dayLabel: dayLabel, need: need, filled: chosen.filter(Boolean).length, holiday: isHoliday});
