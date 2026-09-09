@@ -244,6 +244,8 @@
   }
   .day-toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
   .day-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .day-toggle-holiday { margin-left: 5px; }
+  .day-toggle-holiday.on { background: var(--warning); border-color: var(--warning); color: var(--accent-ink); }
   .max-input-wrap { display: flex; align-items: center; gap: 5px; margin-left: auto; }
   .max-input-wrap label { font-size: 11px; color: var(--ink-soft); white-space: nowrap; }
   .priority-wrap { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--ink-soft); white-space: nowrap; cursor: pointer; }
@@ -663,14 +665,14 @@
 
   function defaultState(){
     var employees = [
-      mkEmp('安井', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)', false, 5),
-      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
-      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)', false, 3)
+      mkEmp('安井', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, 5, ''),
+      mkEmp('鈴木', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, 5, ''),
+      mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, 5, ''),
+      mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, 5, ''),
+      mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, 5, ''),
+      mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)', false, 5),
+      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1,holiday:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
+      mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1,holiday:0}, null, 'アルバイト(土曜日のみ、祝日勤務あり)', false, 3)
     ];
     var requiredByRole = {
       '配送': {mon:6, tue:6, wed:5, thu:5, fri:5, sat:4, holiday:4},
@@ -814,6 +816,16 @@
         req.holiday = Math.max(1, req.holiday);
       }
     });
+    // Migrate employees saved before the dedicated 祝(holiday) toggle
+    // existed: default it on for anyone with regular weekday availability
+    // (they were implicitly working holidays via weekday-avail overlap
+    // already) and off for weekend-only aux staff, who can opt in.
+    state.employees.forEach(function(e){
+      if (e.avail.holiday === undefined) {
+        var hasWeekday = e.avail.mon || e.avail.tue || e.avail.wed || e.avail.thu || e.avail.fri;
+        e.avail.holiday = hasWeekday ? 1 : 0;
+      }
+    });
   }
 
   // Best-effort heuristic, aware of the actual selected 21日〆〜20日 cycle:
@@ -835,22 +847,25 @@
     var bounds = getCycleBounds(monthStr);
     var cycleWorkTarget = computeCycleDayInfo(monthStr).workdays;
     var regularCount = {}; DAYS.forEach(function(d){ regularCount[d.key] = 0; });
-    var holidayByWeekday = {}; DAYS.forEach(function(d){ holidayByWeekday[d.key] = 0; });
+    var holidayTotal = 0;
     for (var cur = bounds.start; cur <= bounds.end; cur = addDays(cur, 1)) {
       var jsDay = cur.getDay();
       if (jsDay === 0) continue;
-      var dayKey = DAYS[jsDay - 1].key;
-      if (isJapaneseHoliday(cur)) holidayByWeekday[dayKey]++;
-      else regularCount[dayKey]++;
+      if (isJapaneseHoliday(cur)) holidayTotal++;
+      else regularCount[DAYS[jsDay - 1].key]++;
     }
 
-    var holidayTotal = DAYS.reduce(function(s, d){ return s + holidayByWeekday[d.key]; }, 0);
     var availCount = {}; DAYS.forEach(function(d){ availCount[d.key] = 0; });
+    var holidayAvailCount = 0;
     var capacity = 0;
     emps.forEach(function(e){
       var availKeys = DAYS.filter(function(d){ return e.avail[d.key]; }).map(function(d){ return d.key; });
       availKeys.forEach(function(k){ availCount[k]++; });
-      var availDaysInCycle = availKeys.reduce(function(s, k){ return s + regularCount[k] + holidayByWeekday[k]; }, 0);
+      if (e.avail.holiday) holidayAvailCount++;
+      // A holiday can land on any weekday, so whether someone works it is
+      // governed by their own dedicated holiday toggle, not weekday avail.
+      var availDaysInCycle = availKeys.reduce(function(s, k){ return s + regularCount[k]; }, 0)
+        + (e.avail.holiday ? holidayTotal : 0);
       // Size demand assuming everyone (including flexible/no-cap staff)
       // shares the same cycle target — otherwise the sizing pass over-
       // relies on their theoretical max availability, which the actual
@@ -858,11 +873,6 @@
       var target = Math.min(cycleWorkTarget, availDaysInCycle);
       capacity += target;
     });
-    // A holiday can land on any weekday, so its eligible headcount is
-    // capped by the tightest weekday it actually falls on this cycle.
-    var holidayAvailCount = holidayTotal > 0
-      ? Math.min.apply(null, DAYS.filter(function(d){ return holidayByWeekday[d.key] > 0; }).map(function(d){ return availCount[d.key]; }))
-      : 0;
 
     // Even for roles without a "always ≥1" floor, never trim a day to 0
     // if someone is actually available that day — a role with a single
@@ -980,8 +990,12 @@
       // and leaves the tail of the cycle unstaffed.
       var paceTarget = cycleWorkTarget * ((dayIndex + 1) / totalNonSundayDays);
 
+      // A holiday can land on any weekday, so whether someone works it is
+      // governed by their dedicated holiday toggle, not the weekday it
+      // happens to fall on.
       var candidates = employees.filter(function(e){
-        return e.avail[dayKey] && (e.weeklyMax == null || totalCount[e.id] < cycleWorkTarget);
+        var avail = isHoliday ? !!e.avail.holiday : e.avail[dayKey];
+        return avail && (e.weeklyMax == null || totalCount[e.id] < cycleWorkTarget);
       });
       var catCount = isHoliday ? holidayCount : (dayKey === 'sat' ? satCount : null);
       candidates = shuffle(candidates);
@@ -995,7 +1009,7 @@
       var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
 
       if (guaranteeMin && need >= 1 && chosen.length === 0) {
-        var fallback = employees.filter(function(e){ return e.avail[dayKey]; });
+        var fallback = employees.filter(function(e){ return isHoliday ? !!e.avail.holiday : e.avail[dayKey]; });
         fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
         if (fallback.length > 0) chosen.push(fallback[0].id);
       }
@@ -1004,7 +1018,7 @@
       // the gap even past their own weekly cap, before giving up.
       while (chosen.length < need) {
         var extra = employees.filter(function(e){
-          return e.priorityExtra && e.avail[dayKey] && chosen.indexOf(e.id) === -1;
+          return e.priorityExtra && (isHoliday ? !!e.avail.holiday : e.avail[dayKey]) && chosen.indexOf(e.id) === -1;
         });
         extra = shuffle(extra).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
         if (extra.length === 0) break;
@@ -1300,6 +1314,22 @@
         });
         toggleGroup.appendChild(btn);
       });
+
+      // Holidays can fall on any weekday, so whether someone works them
+      // is tracked separately from the weekday toggles above, not tied
+      // to whichever weekday a given holiday happens to land on.
+      var holidayBtn = document.createElement('button');
+      holidayBtn.type = 'button';
+      holidayBtn.className = 'day-toggle day-toggle-holiday' + (emp.avail.holiday ? ' on' : '');
+      holidayBtn.textContent = '祝';
+      holidayBtn.title = emp.avail.holiday ? '祝日: 出勤可' : '祝日: 出勤不可';
+      holidayBtn.addEventListener('click', function(){
+        emp.avail.holiday = emp.avail.holiday ? 0 : 1;
+        saveState();
+        holidayBtn.classList.toggle('on', !!emp.avail.holiday);
+        holidayBtn.title = emp.avail.holiday ? '祝日: 出勤可' : '祝日: 出勤不可';
+      });
+      toggleGroup.appendChild(holidayBtn);
 
       var maxWrap = document.createElement('div');
       maxWrap.className = 'max-input-wrap';
