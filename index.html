@@ -668,8 +668,8 @@
       mkEmp('藤村', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('西田', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
       mkEmp('坂本', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, 5, ''),
-      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
       mkEmp('漢那', '配送', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, 'アルバイト(基本月〜金、土曜は稀に出勤あり)', false, 5),
+      mkEmp('京谷', '倉庫整理', {mon:1,tue:1,wed:1,thu:1,fri:1,sat:1}, null, '基本 月〜金(土曜は稀に出勤あり)'),
       mkEmp('藤原', '配送', {mon:0,tue:0,wed:0,thu:0,fri:0,sat:1}, null, 'アルバイト(土曜日のみ)', false, 3)
     ];
     var requiredByRole = {
@@ -1235,6 +1235,34 @@
         renderSummary();
       });
 
+      var moveUpBtn = document.createElement('button');
+      moveUpBtn.type = 'button';
+      moveUpBtn.className = 'icon-btn';
+      moveUpBtn.title = '上に移動';
+      moveUpBtn.textContent = '▲';
+      moveUpBtn.addEventListener('click', function(){
+        var idx = state.employees.indexOf(emp);
+        if (idx <= 0) return;
+        state.employees.splice(idx, 1);
+        state.employees.splice(idx - 1, 0, emp);
+        saveState();
+        renderEmployees(); renderSchedule(); renderSummary(); renderLaborSummary();
+      });
+
+      var moveDownBtn = document.createElement('button');
+      moveDownBtn.type = 'button';
+      moveDownBtn.className = 'icon-btn';
+      moveDownBtn.title = '下に移動';
+      moveDownBtn.textContent = '▼';
+      moveDownBtn.addEventListener('click', function(){
+        var idx = state.employees.indexOf(emp);
+        if (idx === -1 || idx >= state.employees.length - 1) return;
+        state.employees.splice(idx, 1);
+        state.employees.splice(idx + 1, 0, emp);
+        saveState();
+        renderEmployees(); renderSchedule(); renderSummary(); renderLaborSummary();
+      });
+
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
       delBtn.className = 'icon-btn';
@@ -1249,6 +1277,8 @@
 
       top.appendChild(nameInput);
       top.appendChild(roleInput);
+      top.appendChild(moveUpBtn);
+      top.appendChild(moveDownBtn);
       top.appendChild(delBtn);
 
       var meta = document.createElement('div');
@@ -1568,6 +1598,7 @@
           head.appendChild(badge);
         }
 
+        var prevRole = null;
         state.employees.forEach(function(emp){
           if (!emp.avail[dayDef.key]) return;
           anySlots = true;
@@ -1576,8 +1607,11 @@
           // Employees only ever see 出勤/休み — the 有給/欠勤 distinction is
           // an admin-side record and is deliberately not exposed here.
           var subtype = (working || readOnly) ? 'off' : getOffSubtype(emp.id, iso);
+          var startsNewRoleGroup = prevRole !== null && prevRole !== emp.role;
+          prevRole = emp.role;
 
           var rowDiv = document.createElement('div');
+          if (startsNewRoleGroup) rowDiv.style.marginTop = '8px';
           var rowClass = working ? '' : (subtype === 'leave' ? ' leave' : (subtype === 'absence' ? ' absence' : ' off'));
           rowDiv.className = 'attend-row' + rowClass + (readOnly ? ' readonly' : '');
 
