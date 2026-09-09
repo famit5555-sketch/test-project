@@ -549,10 +549,12 @@
     <section class="panel" id="myShiftsPanel">
       <h2>勤務表</h2>
       <p class="panel-sub">管理者と同じ勤務表です(閲覧のみ、編集はできません)。</p>
+      <button class="btn btn-primary no-print" id="employeePdfBtn" type="button" style="width:100%; justify-content:center; margin-bottom:14px;">📄 PDFで保存・LINEで送る</button>
+      <p class="panel-hint no-print" style="margin-top:-8px; margin-bottom:14px; padding-top:0; border-top:none;">保存画面で「PDFに保存」を選ぶと、そのままLINEなどで送れます。</p>
       <div id="employeeScheduleContainer"></div>
     </section>
 
-    <section class="panel" id="requestFormPanel" style="margin-top:16px;">
+    <section class="panel no-print" id="requestFormPanel" style="margin-top:16px;">
       <h2>希望を出す</h2>
       <p class="panel-sub">休み希望・遅刻希望・早退希望などは、下のボタンから専用フォームで送信してください。</p>
       <a class="btn btn-primary" id="reqFormLink" href="https://docs.google.com/forms/d/e/1FAIpQLSdSC4ocSQLHKy9NdxaTrjdRyLHZAz2ny2f7RGbYOTV_UxP0CQ/viewform" target="_blank" rel="noopener" style="width:100%; justify-content:center;">📝 希望を送る(フォームを開く)</a>
@@ -1835,6 +1837,7 @@
   }
 
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
+  document.getElementById('employeePdfBtn').addEventListener('click', function(){ window.print(); });
 
   document.getElementById('resetBtn').addEventListener('click', function(){
     if (!confirm('従業員・必要人数・勤務表を、すべて最初の設定に戻します。よろしいですか?\n(社員からの希望は消えません)')) return;
