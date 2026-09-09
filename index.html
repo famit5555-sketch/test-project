@@ -497,6 +497,7 @@
       </div>
     </div>
     <div class="header-actions no-print" id="headerActions">
+      <button class="btn" id="undoBtn" type="button" hidden>↺ 元に戻す</button>
       <button class="btn btn-danger" id="resetBtn" type="button">⟲ 初期設定にリセット</button>
       <button class="btn btn-primary" id="printBtn" type="button">📄 PDFで保存/印刷</button>
     </div>
@@ -595,6 +596,7 @@
   "use strict";
 
   var STORAGE_KEY = 'famit-shift-v10';
+  var UNDO_KEY = 'famit-shift-v10-undo';
   var STANDARD_DAILY_HOURS = 8;
   var MODE_KEY = 'famit-shift-mode';
   var ROLE_MIN_ONE = {'配送': true};
@@ -780,6 +782,22 @@
   function saveStateDebounced(){
     clearTimeout(saveDebounceTimer);
     saveDebounceTimer = setTimeout(saveState, 500);
+  }
+
+  // One-slot "undo" safety net: before any action that irreversibly
+  // overwrites the current schedule/settings (regenerate, auto-calc,
+  // reset, delete employee), stash the current state here so it can be
+  // restored once if the action turns out to be a mistake.
+  function snapshotForUndo(){
+    try { localStorage.setItem(UNDO_KEY, JSON.stringify(state)); } catch (e) {}
+    updateUndoButtonVisibility();
+  }
+  function updateUndoButtonVisibility(){
+    var btn = document.getElementById('undoBtn');
+    if (!btn) return;
+    var has = false;
+    try { has = !!localStorage.getItem(UNDO_KEY); } catch (e) {}
+    btn.hidden = !has;
   }
 
   function renderAll(){
@@ -1262,7 +1280,7 @@
       nameInput.value = emp.name;
       nameInput.setAttribute('aria-label', '氏名');
       nameInput.addEventListener('input', function(){ emp.name = nameInput.value; saveStateDebounced(); });
-      nameInput.addEventListener('blur', function(){ saveState(); renderSchedule(); renderSummary(); });
+      nameInput.addEventListener('blur', function(){ saveState(); renderSchedule(); renderSummary(); renderLaborSummary(); });
 
       var roleInput = document.createElement('select');
       roleInput.className = 'role-input';
@@ -1330,10 +1348,11 @@
       delBtn.title = '削除';
       delBtn.textContent = '✕';
       delBtn.addEventListener('click', function(){
-        if (!confirm(emp.name + 'さんを削除しますか?')) return;
+        if (!confirm(emp.name + 'さんを削除しますか?(直後なら「↺ 元に戻す」で復元できます)')) return;
+        snapshotForUndo();
         state.employees = state.employees.filter(function(e){ return e.id !== emp.id; });
         saveState();
-        renderEmployees(); renderRequired(); renderSchedule(); renderSummary();
+        renderEmployees(); renderRequired(); renderSchedule(); renderSummary(); renderLaborSummary();
       });
 
       top.appendChild(nameInput);
@@ -1410,7 +1429,7 @@
         emp.paidLeaveBalance = plInput.value === '' ? 0 : Math.max(0, parseInt(plInput.value, 10) || 0);
         saveStateDebounced();
       });
-      plInput.addEventListener('blur', function(){ saveState(); renderLaborSummary(); });
+      plInput.addEventListener('blur', function(){ saveState(); renderLaborSummary(); renderSchedule(); });
       plWrap.appendChild(plLabel);
       plWrap.appendChild(plInput);
 
@@ -1459,7 +1478,11 @@
   });
 
   // ---------- rendering: required headcount (per role) ----------
-  document.getElementById('autoBalanceBtn').addEventListener('click', autoBalanceAllRoles);
+  document.getElementById('autoBalanceBtn').addEventListener('click', function(){
+    if (!confirm('役割ごとの必要人数を自動計算の値で上書きします。手で調整した数値も置き換わります(直後なら「↺ 元に戻す」で復元できます)。よろしいですか?')) return;
+    snapshotForUndo();
+    autoBalanceAllRoles();
+  });
   var requiredByRoleEl = document.getElementById('requiredByRole');
   function renderRequired(){
     ensureRequiredForRoles();
@@ -1543,6 +1566,11 @@
 
   document.getElementById('generateBtn').addEventListener('click', function(){
     if (state.employees.length === 0) { alert('従業員を1人以上追加してください。'); return; }
+    var hasExisting = Object.keys(state.assignmentsByRole).some(function(role){
+      return Object.keys(state.assignmentsByRole[role] || {}).length > 0;
+    });
+    if (hasExisting && !confirm('現在の勤務表を上書きします。手で調整した内容も消えます(直後なら「↺ 元に戻す」で復元できます)。よろしいですか?')) return;
+    if (hasExisting) snapshotForUndo();
     ensureRequiredForRoles();
     var gen = generateAll(state.employees, state.requiredByRole, state.period.month);
     state.assignmentsByRole = gen.assignmentsByRole;
@@ -1688,8 +1716,13 @@
 
           // A holiday overrides the weekday's own avail toggle — whoever
           // is eligible is governed entirely by the dedicated 祝 toggle,
-          // matching the scheduling algorithm.
-          var isAvailToday = cellIsHoliday ? !!emp.avail.holiday : !!emp.avail[dayDef.key];
+          // matching the scheduling algorithm. Except for a role marked
+          // holidayIgnore (treats holidays as a normal weekday for
+          // staffing purposes), where the weekday toggle governs instead
+          // — same condition the generator uses to pick isHoliday.
+          var roleReq = state.requiredByRole[emp.role];
+          var holidayGatesThisEmp = cellIsHoliday && !(roleReq && roleReq.holidayIgnore);
+          var isAvailToday = holidayGatesThisEmp ? !!emp.avail.holiday : !!emp.avail[dayDef.key];
           if (!isAvailToday) {
             var blank = document.createElement('div');
             blank.className = 'attend-row-blank';
@@ -1883,12 +1916,28 @@
   document.getElementById('adminPdfBtn').addEventListener('click', function(){ window.print(); });
 
   document.getElementById('resetBtn').addEventListener('click', function(){
-    if (!confirm('従業員・必要人数・勤務表を、すべて最初の設定に戻します。よろしいですか?\n(社員からの希望は消えません)')) return;
+    if (!confirm('従業員・必要人数・勤務表を、すべて最初の設定に戻します。よろしいですか?\n(社員からの希望は消えません。直後なら「↺ 元に戻す」で復元できます)')) return;
+    snapshotForUndo();
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
     state = defaultState();
     saveState();
     renderAll();
     showBanner('初期設定に戻しました。');
+  });
+
+  document.getElementById('undoBtn').addEventListener('click', function(){
+    var raw = null;
+    try { raw = localStorage.getItem(UNDO_KEY); } catch (e) {}
+    if (!raw) return;
+    if (!confirm('直前の操作を取り消して、元の状態に戻します。よろしいですか?')) return;
+    try {
+      state = normalizeState(JSON.parse(raw));
+    } catch (e) { return; }
+    try { localStorage.removeItem(UNDO_KEY); } catch (e) {}
+    saveState();
+    renderAll();
+    updateUndoButtonVisibility();
+    showBanner('元に戻しました。');
   });
 
   // ---------- employee (mobile) view ----------
@@ -1958,6 +2007,8 @@
     if (tabsEl2) tabsEl2.hidden = true;
     var resetBtnEl = document.getElementById('resetBtn');
     if (resetBtnEl) resetBtnEl.hidden = true;
+    var undoBtnEl = document.getElementById('undoBtn');
+    if (undoBtnEl) undoBtnEl.hidden = true;
     document.body.classList.add('admin-readonly');
     var banner = document.createElement('div');
     banner.className = 'readonly-banner no-print';
@@ -1970,6 +2021,7 @@
     } catch (e) {}
   }
   setMode(initialMode);
+  if (!ADMIN_READONLY) updateUndoButtonVisibility();
 
   initDb();
 })();
