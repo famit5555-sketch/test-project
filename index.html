@@ -345,6 +345,7 @@
   .labor-table th:first-child, .labor-table td:first-child { text-align: left; }
   .labor-table th { color: var(--ink-soft); font-weight: 700; font-size: 11px; }
   .labor-table td.ot-warn { color: var(--warning); font-weight: 700; }
+  .labor-table td.off-days { color: var(--rest); font-weight: 700; }
   .labor-table tfoot td { border-bottom: none; padding-top: 5px; }
   .pl-input { width: 48px; }
 
@@ -527,7 +528,7 @@
 
         <section class="panel" id="laborPanel" style="margin-top:18px;">
           <h2 style="margin-bottom:3px;">労務・残業集計</h2>
-          <p class="panel-sub">所定労働時間は1日8時間(休憩1時間別)。それを超えた分を残業として累計します。実働時間は勤務表の各出勤欄の時間数(既定8h・15分刻みで入力可)を編集すると反映されます。</p>
+          <p class="panel-sub">休み日数は対象期間(日曜含む)から出勤日数を引いたものです。所定労働時間は1日8時間(休憩1時間別)。それを超えた分を残業として累計します。実働時間は勤務表の各出勤欄の時間数(既定8h・15分刻みで入力可)を編集すると反映されます。</p>
           <div id="laborContainer"></div>
         </section>
 
@@ -1138,19 +1139,22 @@
     box.innerHTML = '';
     if (state.employees.length === 0) return;
     var laborSummary = computeLaborSummary();
+    var cycleTotalDays = computeCycleDayInfo(state.period.month).total;
     var table = document.createElement('table');
     table.className = 'labor-table';
     var thead = document.createElement('thead');
-    thead.innerHTML = '<tr><th>氏名</th><th>出勤日数</th><th>実働時間</th><th>残業時間</th><th>有給残</th></tr>';
+    thead.innerHTML = '<tr><th>氏名</th><th>出勤日数</th><th>休み日数</th><th>実働時間</th><th>残業時間</th><th>有給残</th></tr>';
     table.appendChild(thead);
     var tbody = document.createElement('tbody');
-    var totalHours = 0, totalOT = 0, totalDays = 0;
+    var totalHours = 0, totalOT = 0, totalDays = 0, totalOff = 0;
     state.employees.forEach(function(e){
       var s = laborSummary[e.id] || {days:0, hours:0, overtime:0};
-      totalHours += s.hours; totalOT += s.overtime; totalDays += s.days;
+      var offDays = Math.max(0, cycleTotalDays - s.days);
+      totalHours += s.hours; totalOT += s.overtime; totalDays += s.days; totalOff += offDays;
       var tr = document.createElement('tr');
       tr.innerHTML = '<td>' + e.name + '</td>' +
         '<td>' + s.days + '日</td>' +
+        '<td class="off-days">' + offDays + '日</td>' +
         '<td>' + s.hours.toFixed(1) + 'h</td>' +
         '<td class="' + (s.overtime > 0 ? 'ot-warn' : '') + '">' + s.overtime.toFixed(1) + 'h</td>' +
         '<td>' + (e.paidLeaveBalance != null ? e.paidLeaveBalance + '日' : '–') + '</td>';
@@ -1158,7 +1162,7 @@
     });
     table.appendChild(tbody);
     var tfoot = document.createElement('tfoot');
-    tfoot.innerHTML = '<tr><td>合計</td><td>' + totalDays + '日</td><td>' + totalHours.toFixed(1) + 'h</td><td>' + totalOT.toFixed(1) + 'h</td><td></td></tr>';
+    tfoot.innerHTML = '<tr><td>合計</td><td>' + totalDays + '日</td><td>' + totalOff + '日</td><td>' + totalHours.toFixed(1) + 'h</td><td>' + totalOT.toFixed(1) + 'h</td><td></td></tr>';
     table.appendChild(tfoot);
     box.appendChild(table);
   }
