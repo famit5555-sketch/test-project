@@ -565,7 +565,6 @@
 
         <section class="panel" id="schedulePanel" style="margin-top:18px;">
           <h2 style="margin-bottom:14px;">勤務表</h2>
-          <button class="btn btn-primary no-print" id="adminPdfBtn" type="button" style="width:100%; justify-content:center; margin-bottom:14px;">📄 PDFで保存</button>
           <div id="scheduleContainer"></div>
         </section>
       </div>
@@ -1913,7 +1912,6 @@
 
   document.getElementById('printBtn').addEventListener('click', function(){ window.print(); });
   document.getElementById('employeePdfBtn').addEventListener('click', function(){ window.print(); });
-  document.getElementById('adminPdfBtn').addEventListener('click', function(){ window.print(); });
 
   document.getElementById('resetBtn').addEventListener('click', function(){
     if (!confirm('従業員・必要人数・勤務表を、すべて最初の設定に戻します。よろしいですか?\n(社員からの希望は消えません。直後なら「↺ 元に戻す」で復元できます)')) return;
