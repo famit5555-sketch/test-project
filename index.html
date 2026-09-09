@@ -371,6 +371,9 @@
     width: 100%; border: 1px solid var(--accent); border-radius: 8px;
     background: var(--accent); padding: 5px 6px 5px 10px; font-family: var(--font-body);
   }
+  .attend-row-blank {
+    width: 100%; height: 33px; flex-shrink: 0;
+  }
   .attend-main {
     display: flex; align-items: center; justify-content: space-between; gap: 8px;
     flex: 1; min-width: 0; border: none; background: transparent; padding: 2px 0;
@@ -1631,19 +1634,31 @@
 
         var prevRole = null;
         state.employees.forEach(function(emp){
+          // Track role-group boundaries by fixed roster position (not by
+          // who happens to be visible today) so the gap before 京谷/藤原
+          // lands in the same place on every day, keeping columns
+          // aligned even when someone (e.g. 藤原 on a non-Saturday,
+          // non-holiday day) has no row at all that day.
+          var startsNewRoleGroup = prevRole !== null && prevRole !== emp.role;
+          prevRole = emp.role;
+
           // A holiday overrides the weekday's own avail toggle — whoever
           // is eligible is governed entirely by the dedicated 祝 toggle,
           // matching the scheduling algorithm.
           var isAvailToday = cellIsHoliday ? !!emp.avail.holiday : !!emp.avail[dayDef.key];
-          if (!isAvailToday) return;
+          if (!isAvailToday) {
+            var blank = document.createElement('div');
+            blank.className = 'attend-row-blank';
+            if (startsNewRoleGroup) blank.style.marginTop = '8px';
+            cell.appendChild(blank);
+            return;
+          }
           anySlots = true;
           var arr = (assignmentsByRole[emp.role] || {})[iso];
           var working = !!arr && arr.indexOf(emp.id) !== -1;
           // Employees only ever see 出勤/休み — the 有給/欠勤 distinction is
           // an admin-side record and is deliberately not exposed here.
           var subtype = (working || readOnly) ? 'off' : getOffSubtype(emp.id, iso);
-          var startsNewRoleGroup = prevRole !== null && prevRole !== emp.role;
-          prevRole = emp.role;
 
           var rowDiv = document.createElement('div');
           if (startsNewRoleGroup) rowDiv.style.marginTop = '8px';
