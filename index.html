@@ -955,8 +955,14 @@
     // order) per pass, rather than fully draining one day before the
     // next — a day can recur a different number of times in the cycle,
     // so draining a whole day in one go would cut unevenly. Holidays are
-    // trimmed alongside Saturday, last.
-    var priorityKeys = REDUCE_PRIORITY.concat(['holiday']);
+    // trimmed first: a holiday occurs only once or twice per cycle, so
+    // each holiday reduction only closes a small slice of the shortfall
+    // — trimming it last (as before) meant the round-robin's shortfall
+    // usually hit zero from the more "efficient" weekday cuts before
+    // holiday ever got a turn, leaving it stuck near its untrimmed
+    // headcount even though actual holiday demand is closer to a slow
+    // weekday than a normal one.
+    var priorityKeys = ['holiday'].concat(REDUCE_PRIORITY);
     var canReduceMore = true;
     while (shortfall > 0 && canReduceMore) {
       canReduceMore = false;
