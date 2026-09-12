@@ -28,6 +28,8 @@
     --rest-soft: #DCE8F7;
     --leave: #A9821A;
     --leave-soft: #FBF0CC;
+    --requested: #2C8C8C;
+    --requested-soft: #DCF0EF;
     --shadow: 0 1px 2px rgba(22,32,46,0.07), 0 6px 16px rgba(22,32,46,0.07);
     --radius: 12px;
     --font-display: 'Oswald', 'Yu Gothic Medium', 'Hiragino Kaku Gothic ProN', sans-serif;
@@ -56,6 +58,8 @@
       --rest-soft: #1B2E44;
       --leave: #E8C34F;
       --leave-soft: #3B3319;
+      --requested: #5FC9C4;
+      --requested-soft: #163634;
       --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
     }
   }
@@ -81,6 +85,8 @@
     --rest-soft: #1B2E44;
     --leave: #C08AE0;
     --leave-soft: #33223D;
+    --requested: #5FC9C4;
+    --requested-soft: #163634;
     --shadow: 0 1px 2px rgba(0,0,0,0.45), 0 10px 26px rgba(0,0,0,0.35);
   }
 
@@ -389,6 +395,9 @@
   .attend-row.leave { background: var(--leave-soft); border-color: var(--leave); }
   .attend-row.leave .attend-name { color: var(--leave); }
   .attend-row.leave .attend-status { color: var(--leave); }
+  .attend-row.requested { background: var(--requested-soft); border-color: var(--requested); }
+  .attend-row.requested .attend-name { color: var(--requested); }
+  .attend-row.requested .attend-status { color: var(--requested); }
   .attend-row.absence { background: var(--danger-soft); border-color: var(--danger); }
   .attend-row.absence .attend-name { color: var(--danger); }
   .attend-row.absence .attend-status { color: var(--danger); }
@@ -470,7 +479,7 @@
     /* Keep the same solid, high-contrast colors as on screen (this is
        mainly viewed as a PDF shared over LINE, not paper-printed, so
        readability matters more than saving ink). */
-    .attend-row, .attend-row.off, .attend-row.leave, .attend-row.absence {
+    .attend-row, .attend-row.off, .attend-row.leave, .attend-row.requested, .attend-row.absence {
       -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
     .hour-input, .status-select { display: none !important; }
@@ -711,7 +720,7 @@
       '倉庫整理': {mon:1, tue:1, wed:1, thu:1, fri:1, sat:0, holiday:0, holidayIgnore:true}
     };
     var period = {month: getDefaultMonth()};
-    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: [], actualHours: {}, paidLeaveMarks: {}, absenceMarks: {}};
+    var state = {employees: employees, requiredByRole: requiredByRole, period: period, assignmentsByRole: {}, warnings: [], actualHours: {}, paidLeaveMarks: {}, absenceMarks: {}, requestedOffMarks: {}};
     var gen = generateAll(state.employees, state.requiredByRole, state.period.month);
     state.assignmentsByRole = gen.assignmentsByRole;
     state.warnings = gen.warnings;
@@ -729,7 +738,8 @@
       warnings: Array.isArray(data.warnings) ? data.warnings : [],
       actualHours: (data.actualHours && typeof data.actualHours === 'object') ? data.actualHours : {},
       paidLeaveMarks: (data.paidLeaveMarks && typeof data.paidLeaveMarks === 'object') ? data.paidLeaveMarks : {},
-      absenceMarks: (data.absenceMarks && typeof data.absenceMarks === 'object') ? data.absenceMarks : {}
+      absenceMarks: (data.absenceMarks && typeof data.absenceMarks === 'object') ? data.absenceMarks : {},
+      requestedOffMarks: (data.requestedOffMarks && typeof data.requestedOffMarks === 'object') ? data.requestedOffMarks : {}
     };
   }
 
@@ -887,6 +897,12 @@
   // last) so Saturday stays as staffed as possible. Holidays are treated
   // like Saturday.
   var REDUCE_PRIORITY = ['wed', 'thu', 'fri', 'tue', 'mon', 'sat'];
+
+  // How many shifts ahead of their own prorated cycle pace a standard
+  // employee is allowed to be at any point. Without this, shuffle luck
+  // can let someone race far ahead early, hit their cycle cap, and then
+  // sit idle (zero shifts) for the rest of the cycle.
+  var PACE_AHEAD_SLACK = 2;
   function autoCalcRequiredForCycle(role, monthStr){
     var emps = state.employees.filter(function(e){ return (e.role || '未設定') === role; });
     var floor = ROLE_MIN_ONE[role] ? 1 : 0;
@@ -1043,7 +1059,15 @@
       // happens to fall on.
       var candidates = employees.filter(function(e){
         var avail = isHoliday ? !!e.avail.holiday : e.avail[dayKey];
-        return avail && (e.weeklyMax == null || totalCount[e.id] < cycleWorkTarget);
+        if (!avail || isLockedOff(e.id, iso)) return false;
+        if (e.weeklyMax == null) return true;
+        if (totalCount[e.id] >= cycleWorkTarget) return false;
+        // Keep everyone within a small margin of their own prorated pace
+        // so nobody races ahead early purely by shuffle luck and then
+        // hits their cycle cap with weeks still left — which would leave
+        // them with no shifts for the rest of the cycle.
+        if (totalCount[e.id] >= paceTarget + PACE_AHEAD_SLACK) return false;
+        return true;
       });
       var catCount = isHoliday ? holidayCount : (dayKey === 'sat' ? satCount : null);
       candidates = shuffle(candidates);
@@ -1057,7 +1081,9 @@
       var chosen = candidates.slice(0, need).map(function(e){ return e.id; });
 
       if (guaranteeMin && need >= 1 && chosen.length === 0) {
-        var fallback = employees.filter(function(e){ return isHoliday ? !!e.avail.holiday : e.avail[dayKey]; });
+        var fallback = employees.filter(function(e){
+          return (isHoliday ? !!e.avail.holiday : e.avail[dayKey]) && !isLockedOff(e.id, iso);
+        });
         fallback = shuffle(fallback).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
         if (fallback.length > 0) chosen.push(fallback[0].id);
       }
@@ -1066,7 +1092,7 @@
       // the gap even past their own weekly cap, before giving up.
       while (chosen.length < need) {
         var extra = employees.filter(function(e){
-          return e.priorityExtra && (isHoliday ? !!e.avail.holiday : e.avail[dayKey]) && chosen.indexOf(e.id) === -1;
+          return e.priorityExtra && (isHoliday ? !!e.avail.holiday : e.avail[dayKey]) && chosen.indexOf(e.id) === -1 && !isLockedOff(e.id, iso);
         });
         extra = shuffle(extra).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
         if (extra.length === 0) break;
@@ -1161,7 +1187,7 @@
 
   // ---------- paid leave (有給) ----------
   function isPaidLeave(empId, iso){
-    return !!(state.paidLeaveMarks && state.paidLeaveMarks[empId] && state.paidLeaveMarks[empId][iso]);
+    return !!(state && state.paidLeaveMarks && state.paidLeaveMarks[empId] && state.paidLeaveMarks[empId][iso]);
   }
   function markPaidLeave(emp, iso){
     if (isPaidLeave(emp.id, iso)) return;
@@ -1178,7 +1204,7 @@
 
   // ---------- absence (欠勤) ----------
   function isAbsence(empId, iso){
-    return !!(state.absenceMarks && state.absenceMarks[empId] && state.absenceMarks[empId][iso]);
+    return !!(state && state.absenceMarks && state.absenceMarks[empId] && state.absenceMarks[empId][iso]);
   }
   function markAbsence(emp, iso){
     if (isAbsence(emp.id, iso)) return;
@@ -1191,17 +1217,46 @@
     delete state.absenceMarks[emp.id][iso];
   }
 
-  // ---------- off-day subtype: 'off' (休み) | 'leave' (有給) | 'absence' (欠勤) ----------
+  // ---------- requested day off (希望休) ----------
+  // Distinct from plain 休み (which just means "wasn't picked this round"
+  // and is free to reshuffle): marking a day 希望休 or 有給 records that the
+  // admin deliberately locked it in for a known request, so the generator
+  // treats it as unavailable and works around it instead of overwriting it.
+  function isRequestedOff(empId, iso){
+    return !!(state && state.requestedOffMarks && state.requestedOffMarks[empId] && state.requestedOffMarks[empId][iso]);
+  }
+  function markRequestedOff(emp, iso){
+    if (isRequestedOff(emp.id, iso)) return;
+    if (!state.requestedOffMarks) state.requestedOffMarks = {};
+    if (!state.requestedOffMarks[emp.id]) state.requestedOffMarks[emp.id] = {};
+    state.requestedOffMarks[emp.id][iso] = true;
+  }
+  function unmarkRequestedOff(emp, iso){
+    if (!isRequestedOff(emp.id, iso)) return;
+    delete state.requestedOffMarks[emp.id][iso];
+  }
+
+  // A day is "locked": the generator must never assign this person to
+  // work it, and must never clear the mark itself — only the admin can,
+  // via the status dropdown or by manually toggling them back to 出勤.
+  function isLockedOff(empId, iso){
+    return isPaidLeave(empId, iso) || isAbsence(empId, iso) || isRequestedOff(empId, iso);
+  }
+
+  // ---------- off-day subtype: 'off' (休み) | 'leave' (有給) | 'requested' (希望休) | 'absence' (欠勤) ----------
   function getOffSubtype(empId, iso){
     if (isPaidLeave(empId, iso)) return 'leave';
     if (isAbsence(empId, iso)) return 'absence';
+    if (isRequestedOff(empId, iso)) return 'requested';
     return 'off';
   }
   function setOffSubtype(emp, iso, subtype){
     if (subtype !== 'leave') unmarkPaidLeave(emp, iso);
     if (subtype !== 'absence') unmarkAbsence(emp, iso);
+    if (subtype !== 'requested') unmarkRequestedOff(emp, iso);
     if (subtype === 'leave') markPaidLeave(emp, iso);
     else if (subtype === 'absence') markAbsence(emp, iso);
+    else if (subtype === 'requested') markRequestedOff(emp, iso);
   }
 
   function computeLaborSummary(){
@@ -1606,6 +1661,7 @@
     } else {
       unmarkPaidLeave(emp, iso);
       unmarkAbsence(emp, iso);
+      unmarkRequestedOff(emp, iso);
       var nullIdx = arr.indexOf(null);
       if (nullIdx !== -1) arr[nullIdx] = emp.id;
       else arr.push(emp.id);
@@ -1621,6 +1677,13 @@
     {key:'thu', label:'木'}, {key:'fri', label:'金'}, {key:'sat', label:'土'},
     {key:'sun', label:'日'}
   ];
+
+  var SUBTYPE_INFO = {
+    off: {label: '休み', cls: 'off'},
+    leave: {label: '有給', cls: 'leave'},
+    requested: {label: '希望休', cls: 'requested'},
+    absence: {label: '欠勤', cls: 'absence'}
+  };
 
   function buildWeeksInto(container, roles, assignmentsByRole, readOnly){
     var dates = [];
@@ -1738,7 +1801,7 @@
 
           var rowDiv = document.createElement('div');
           if (startsNewRoleGroup) rowDiv.style.marginTop = '8px';
-          var rowClass = working ? '' : (subtype === 'leave' ? ' leave' : (subtype === 'absence' ? ' absence' : ' off'));
+          var rowClass = working ? '' : ' ' + SUBTYPE_INFO[subtype].cls;
           rowDiv.className = 'attend-row' + rowClass + (readOnly ? ' readonly' : '');
 
           var mainArea = document.createElement(readOnly ? 'div' : 'button');
@@ -1750,7 +1813,7 @@
           nameSpan.textContent = emp.name;
           var statusSpan = document.createElement('span');
           statusSpan.className = 'attend-status';
-          var statusLabel = working ? '出勤' : (subtype === 'leave' ? '有給' : (subtype === 'absence' ? '欠勤' : '休み'));
+          var statusLabel = working ? '出勤' : SUBTYPE_INFO[subtype].label;
           statusSpan.textContent = statusLabel;
 
           mainArea.appendChild(nameSpan);
@@ -1784,8 +1847,8 @@
           } else if (!readOnly && !working) {
             var statusSelect = document.createElement('select');
             statusSelect.className = 'status-select';
-            statusSelect.title = 'この日の休みの種類(休み・有給・欠勤)';
-            [['off', '休み'], ['leave', '有給'], ['absence', '欠勤']].forEach(function(opt){
+            statusSelect.title = 'この日の休みの種類(休み・有給・希望休・欠勤)。有給・希望休・欠勤は自動調整で上書きされません。';
+            [['off', '休み'], ['leave', '有給'], ['requested', '希望休'], ['absence', '欠勤']].forEach(function(opt){
               var o = document.createElement('option');
               o.value = opt[0];
               o.textContent = opt[1];
