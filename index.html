@@ -1107,6 +1107,24 @@
         chosen.push(extra[0].id);
       }
 
+      // Still short? Near the tail of the cycle, several capped
+      // employees can legitimately reach their target on the same days
+      // (the pacing keeps everyone in sync), leaving too few eligible
+      // candidates for that day even though people are actually
+      // available. Let ANY available, unlocked employee cover the gap
+      // past their own cap as a last resort — a small overage for a few
+      // people beats leaving the day critically understaffed. A real
+      // shortage warning should mean nobody was available at all, not
+      // just that everyone eligible already hit their preferred target.
+      while (chosen.length < need) {
+        var anyAvail = employees.filter(function(e){
+          return (isHoliday ? !!e.avail.holiday : e.avail[dayKey]) && chosen.indexOf(e.id) === -1 && !isLockedOff(e.id, iso);
+        });
+        anyAvail = shuffle(anyAvail).sort(function(a, b){ return totalCount[a.id] - totalCount[b.id]; });
+        if (anyAvail.length === 0) break;
+        chosen.push(anyAvail[0].id);
+      }
+
       while (chosen.length < need) chosen.push(null);
 
       assignments[iso] = chosen;
