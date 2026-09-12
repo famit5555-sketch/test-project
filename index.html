@@ -1021,8 +1021,6 @@
 
   function generateForRole(employees, required, monthStr, guaranteeMin){
     var assignments = {};
-    var empMap = {}; employees.forEach(function(e){ empMap[e.id] = e; });
-    var dayMeta = {};
     var totalCount = {}; employees.forEach(function(e){ totalCount[e.id] = 0; });
     var lastIndex = {}; employees.forEach(function(e){ lastIndex[e.id] = -999; });
     // Saturday and holiday duty is scarce (only a handful of each per
@@ -1051,7 +1049,6 @@
       var dayLabel = DAYS[jsDay - 1].label;
       var isHoliday = !required.holidayIgnore && required.holiday != null && isJapaneseHoliday(cur);
       var need = isHoliday ? required.holiday : (required[dayKey] || 0);
-      dayMeta[iso] = {dayKey: dayKey, isHoliday: isHoliday};
       // Everyone's cycle-total budget spent evenly across the cycle
       // instead of front-loaded, so nobody exhausts their days off early
       // and leaves the tail of the cycle unstaffed.
@@ -1116,45 +1113,6 @@
       }
       dayIndex++;
     }
-
-    // Small residual gaps can remain even with even pacing (integer
-    // rounding, day-to-day availability limits): a capped employee
-    // finishing a few shifts under their cycle target. Close that by
-    // swapping them into a day they were available and unlocked for, in
-    // place of an uncapped teammate who isn't priorityExtra — this never
-    // changes how many people work that day, so coverage/warnings are
-    // unaffected. Regular weekdays are tried before Saturdays/holidays
-    // so the separate Saturday/holiday rotation isn't disturbed unless
-    // it has to be.
-    var allIsos = Object.keys(dayMeta);
-    var weekdayIsos = shuffle(allIsos.filter(function(iso){ return dayMeta[iso].dayKey !== 'sat' && !dayMeta[iso].isHoliday; }));
-    var satHolIsos = shuffle(allIsos.filter(function(iso){ return dayMeta[iso].dayKey === 'sat' || dayMeta[iso].isHoliday; }));
-    var shortCapped = shuffle(employees.filter(function(e){ return e.weeklyMax != null; }));
-    [weekdayIsos, satHolIsos].forEach(function(isoGroup){
-      shortCapped.forEach(function(e){
-        if (totalCount[e.id] >= cycleWorkTarget) return;
-        isoGroup.forEach(function(iso){
-          if (totalCount[e.id] >= cycleWorkTarget) return;
-          var meta = dayMeta[iso];
-          var avail = meta.isHoliday ? !!e.avail.holiday : e.avail[meta.dayKey];
-          if (!avail || isLockedOff(e.id, iso)) return;
-          var arr = assignments[iso];
-          if (arr.indexOf(e.id) !== -1) return;
-          var swapIdx = -1;
-          for (var i = 0; i < arr.length; i++) {
-            var occ = arr[i] && empMap[arr[i]];
-            if (occ && occ.weeklyMax == null && !occ.priorityExtra) { swapIdx = i; break; }
-          }
-          if (swapIdx === -1) return;
-          var removedId = arr[swapIdx];
-          arr[swapIdx] = e.id;
-          totalCount[removedId]--; totalCount[e.id]++;
-          if (meta.isHoliday) { holidayCount[removedId]--; holidayCount[e.id]++; }
-          else if (meta.dayKey === 'sat') { satCount[removedId]--; satCount[e.id]++; }
-        });
-      });
-    });
-
     return {assignments: assignments, warnings: warnings, totalCount: totalCount};
   }
 
