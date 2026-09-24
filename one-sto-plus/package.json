@@ -1,0 +1,26 @@
+{
+  "name": "one-sto-plus",
+  "version": "1.0.0",
+  "private": true,
+  "description": "One-Sto Plus — 住宅設備商社のための 見積・受発注・請求クラウド",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "seed": "node --env-file-if-exists=.env src/seed.js --reset",
+    "seed:empty": "node --env-file-if-exists=.env src/seed.js --reset --empty",
+    "test": "node test/smoke.js && node test/ai-mock.js"
+  },
+  "engines": {
+    "node": ">=22.9"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "better-sqlite3": "^13.0.3",
+    "express": "^5.2.1",
+    "iconv-lite": "^0.7.3",
+    "multer": "^2.4.0",
+    "nodemailer": "^10.0.10",
+    "qrcode": "^1.5.4",
+    "xlsx": "^0.18.5"
+  }
+}
