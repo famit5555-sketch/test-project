@@ -86,7 +86,7 @@ textarea { resize: vertical; }
 .group { display: grid; gap: 6px; }
 .group h2 { margin: 10px 0 0; font-size: 13px; letter-spacing: .08em; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
 .group h2 i { font-style: normal; font-family: var(--font-num); }
-.row { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 96px minmax(0, 1.5fr) minmax(0, 1.2fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px 10px 10px; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px 10px 10px; }
 .row.is-open { border-color: var(--accent); }
 .name { margin: 0; font-size: 15px; font-weight: 700; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; overflow-wrap: anywhere; }
 .meta { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
@@ -129,6 +129,16 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
 .preview b { font-family: var(--font-num); color: var(--ink); }
 .err { color: var(--bad); font-size: 13px; margin: 0; }
 
+.ilog h4 { margin: 0 0 6px; font-size: 13px; color: var(--muted); letter-spacing: .06em; display: flex; gap: 8px; align-items: baseline; }
+.ilog h4 i { font-style: normal; font-family: var(--font-num); }
+.ilist { max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); }
+.irow { display: grid; grid-template-columns: auto auto auto auto minmax(0, 1fr); gap: 4px 12px; align-items: baseline; padding: 8px 10px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.irow:last-child { border-bottom: 0; }
+.irow .when { font-family: var(--font-num); font-size: 13px; color: var(--muted); white-space: nowrap; }
+.irow .x { font-family: var(--font-num); font-weight: 600; }
+.irow .rest { font-family: var(--font-num); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.irow .who { min-width: 0; overflow-wrap: anywhere; color: var(--muted); }
+.irow.cancelled > :not(.pill) { text-decoration: line-through; color: var(--muted); }
 .day { margin: 12px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
 .hist { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 52px auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 9px 12px; }
 .hist .t { font-family: var(--font-num); font-size: 13px; color: var(--muted); }
@@ -155,7 +165,8 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   .row { grid-template-columns: 84px minmax(0, 1fr) auto; }
   .tile { width: 84px; }
   .tile .big { font-size: 34px; }
-  .row .last { grid-column: 1 / -1; order: 3; }
+  .irow { grid-template-columns: auto auto auto 1fr; }
+  .irow .who { grid-column: 1 / -1; }
   .hist { grid-template-columns: 48px minmax(0, 1fr) auto; }
   .hist .pill { grid-column: 2; justify-self: start; }
   .hist .what { grid-column: 1 / -1; }
@@ -393,6 +404,23 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       '<div class="actions"><button class="btn primary" data-act="saveItem">' + (isEdit ? "保存" : "追加") + '</button><button class="btn" data-act="cancelForm">キャンセル</button></div></div>';
   }
 
+  function itemLogHTML(it) {
+    var rows = S.log.filter(function (l) { return l.itemId === it.id; });
+    var head = '<div class="ilog"><h4>入出庫の記録<i>' + rows.length + "件</i></h4>";
+    if (!S.logReady) return head + '<p class="meta">読み込み中です</p></div>';
+    if (!rows.length) return head + '<p class="meta">この品番の記録はまだありません。</p></div>';
+    var html = head + '<div class="ilist">';
+    rows.forEach(function (l) {
+      var cls = l.kind === "out" ? "out" : (l.kind === "in" ? "in" : "adj");
+      var sign = l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
+      html += '<div class="irow' + (l.cancelled ? " cancelled" : "") + '"><span class="when">' + md(l.ts) + "（" + WD[new Date(l.ts).getDay()] + "） " + hm(l.ts) + '</span>' +
+        '<span class="pill ' + cls + '">' + KIND[l.kind] + (l.cancelled ? "（取消）" : "") + '</span>' +
+        '<span class="x">' + sign + esc(l.unit || it.unit || "") + '</span>' +
+        '<span class="rest">残 ' + l.after + '</span>' +
+        '<span class="who">' + esc(who(l.by)) + (l.note ? " ・ " + esc(l.note) : "") + "</span></div>";
+    });
+    return html + "</div></div>";
+  }
   function panelHTML(it) {
     var f = S.form || { n: "", note: "" };
     var isOut = S.mode === "out";
@@ -415,31 +443,26 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       '<label class="f" style="grid-column: span 2">' + noteLabel + '<input type="text" id="p_note" value="' + esc(f.note) + '" placeholder="' + noteHint + '"></label></div>' +
       (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
       '<div class="actions"><button class="btn primary" data-act="commit">記録する</button>' + prev + '<span class="grow"></span>' +
-      '<button class="btn sm" data-act="showHist" data-id="' + esc(it.id) + '">この品目の履歴</button>' +
       '<button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '">品目を編集</button>' +
       (confirm
         ? '<button class="btn sm danger" data-act="delete" data-id="' + esc(it.id) + '">本当に削除する</button>'
         : '<button class="btn sm danger" data-act="askDelete" data-id="' + esc(it.id) + '">削除</button>') +
-      "</div></div>";
+      "</div>" + itemLogHTML(it) + "</div>";
   }
 
   function rowHTML(it) {
     if (S.editing === it.id && S.canWrite) return formHTML(S.form, true);
-    var st = stateOf(it), lo = lastOutOf(it.id), open = S.open === it.id;
+    var st = stateOf(it), open = S.open === it.id;
     var pill = st === "zero" ? '<span class="pill zero">在庫切れ</span>' : (st === "low" ? '<span class="pill low">残りわずか</span>' : "");
     var meta = [];
     if (makerOf(it)) meta.push("<b>" + esc(makerOf(it)) + "</b>");
     if (modelOf(it)) meta.push('<span class="mono">' + esc(modelOf(it)) + "</span>");
     if (it.loc) meta.push("置き場 " + esc(it.loc));
     if (it.min) meta.push("目安 " + it.min + esc(it.unit || ""));
-    var last = lo
-      ? "最終出庫 <b>" + md(lo.ts) + " " + hm(lo.ts) + "</b>（" + ago(lo.ts) + "）<br>" + esc(who(lo.by)) + " ・ " + lo.n + esc(lo.unit || it.unit || "") + (lo.note ? " ・ " + esc(lo.note) : "")
-      : '<span class="none">出庫の記録なし</span>';
     var w = S.canWrite;
     return '<article class="row' + (open ? " is-open" : "") + '" data-id="' + esc(it.id) + '">' +
       '<button class="tile ' + st + '" data-act="open" data-id="' + esc(it.id) + '" aria-expanded="' + open + '" aria-label="' + esc(it.name) + ' 残り ' + it.qty + esc(it.unit || "") + '、詳細を開く"><span class="lbl">残り</span><span class="big">' + it.qty + '</span><span class="u">' + esc(it.unit || "") + "</span></button>" +
       '<div><h3 class="name">' + esc(it.name) + " " + pill + (S.canWrite ? ' <button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を編集">編集</button>' : "") + '</h3><p class="meta">' + (meta.join(" ・ ") || "&nbsp;") + "</p></div>" +
-      '<div class="last">' + last + "</div>" +
       '<div class="steps"><button data-act="quick" data-kind="out" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ出庫"' + (w && it.qty > 0 ? "" : " disabled") + ">−</button>" +
       '<button data-act="quick" data-kind="in" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ入庫"' + (w ? "" : " disabled") + ">＋</button></div>" +
       (open && w ? panelHTML(it) : "") + "</article>";
