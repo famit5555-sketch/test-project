@@ -203,6 +203,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   var CATS = ["水栓金具", "キッチン", "洗面・化粧台", "トイレ", "浴室・ユニットバス", "給湯器・ボイラー", "換気・空調", "配管部材", "電気・照明", "工具・消耗品", "その他"];
   var MAKERS = ["リンナイ", "ノーリツ", "TOTO", "LIXIL", "三菱", "東芝", "パナソニック", "三栄", "カクダイ", "KVK"];
   var OTHER = "その他";
+  var UNITS = ["個", "台", "本", "セット", "枚", "箱", "m"];
   function makerOf(it) { return it.maker || (MAKERS.indexOf(it.model) >= 0 ? it.model : ""); }
   function modelOf(it) { return it.maker ? (it.model || "") : (MAKERS.indexOf(it.model) >= 0 ? "" : (it.model || "")); }
   var KIND = { out: "出庫", "in": "入庫", adjust: "棚卸修正" };
@@ -387,6 +388,8 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   }
 
   function formHTML(f, isEdit) {
+    var units = UNITS.indexOf(f.unit) >= 0 || !f.unit ? UNITS : UNITS.concat([f.unit]);
+    var unitOpts = units.map(function (u) { return '<option value="' + esc(u) + '"' + ((f.unit || "個") === u ? " selected" : "") + ">" + esc(u) + "</option>"; }).join("");
     var makerOpts = MAKERS.concat([OTHER]).map(function (m) { return '<option value="' + esc(m) + '"' + (f.maker === m ? " selected" : "") + ">" + esc(m) + "</option>"; }).join("");
     var catOpts = CATS.map(function (c) { return '<option value="' + esc(c) + '"' + (f.cat === c ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
     return '<div class="formcard"><h3>' + (isEdit ? "品目を編集" : "品目を追加") + "</h3>" +
@@ -397,10 +400,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       '<label class="f" id="f_makerOtherWrap"' + (f.maker === OTHER ? "" : " hidden") + '>メーカー名（その他）<input type="text" id="f_makerOther" value="' + esc(f.makerOther) + '"></label>' +
       '<label class="f">型番<input type="text" id="f_model" value="' + esc(f.model) + '" placeholder="例：RUX-A1615WE/13A"></label>' +
       '<label class="f">置き場<input type="text" id="f_loc" value="' + esc(f.loc) + '" placeholder="例：倉庫A 棚3"></label>' +
-      '<label class="f">単位<input type="text" id="f_unit" value="' + esc(f.unit) + '" placeholder="個・台・本・セット"></label>' +
+      '<label class="f">単位<select id="f_unit">' + unitOpts + '</select></label>' +
       (isEdit ? "" : '<label class="f">現在の数量<input type="number" id="f_qty" min="0" step="1" inputmode="numeric" value="' + esc(f.qty) + '"></label>') +
       '<label class="f">補充の目安（この数以下で警告）<input type="number" id="f_min" min="0" step="1" inputmode="numeric" value="' + esc(f.min) + '"></label>' +
-      "</div>" + (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
+      "</div>" + (isEdit ? '<p class="meta">数量はここでは変更できません。左の「残り」の数字を押して、入庫・出庫・棚卸で修正してください。</p>' : "") + (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
       '<div class="actions"><button class="btn primary" data-act="saveItem">' + (isEdit ? "保存" : "追加") + '</button><button class="btn" data-act="cancelForm">キャンセル</button></div></div>';
   }
 
@@ -415,7 +418,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       var sign = l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
       html += '<div class="irow' + (l.cancelled ? " cancelled" : "") + '"><span class="when">' + md(l.ts) + "（" + WD[new Date(l.ts).getDay()] + "） " + hm(l.ts) + '</span>' +
         '<span class="pill ' + cls + '">' + KIND[l.kind] + (l.cancelled ? "（取消）" : "") + '</span>' +
-        '<span class="x">' + sign + esc(l.unit || it.unit || "") + '</span>' +
+        '<span class="x">' + sign + esc(it.unit || l.unit || "") + '</span>' +
         '<span class="rest">残 ' + l.after + '</span>' +
         '<span class="who">' + esc(who(l.by)) + (l.note ? " ・ " + esc(l.note) : "") + "</span></div>";
     });
@@ -442,7 +445,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       '<label class="f">' + label + '<input type="number" id="p_n" min="0" step="1" inputmode="numeric" value="' + esc(f.n) + '"></label>' +
       '<label class="f" style="grid-column: span 2">' + noteLabel + '<input type="text" id="p_note" value="' + esc(f.note) + '" placeholder="' + noteHint + '"></label></div>' +
       (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
-      '<div class="actions"><button class="btn primary" data-act="commit">記録する</button>' + prev + '<span class="grow"></span>' +
+      '<div class="actions"><button class="btn primary" data-act="commit">記録してメインに戻る</button><button class="btn" data-act="close">閉じる</button>' + prev + '<span class="grow"></span>' +
       '<button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '">品目を編集</button>' +
       (confirm
         ? '<button class="btn sm danger" data-act="delete" data-id="' + esc(it.id) + '">本当に削除する</button>'
@@ -578,6 +581,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     }
   });
 
+  function scrollRow(id) {
+    var el = id && document.querySelector('.row[data-id="' + id + '"]');
+    if (el) el.scrollIntoView({ block: "center" });
+  }
   document.addEventListener("click", async function (e) {
     var t = e.target.closest("button");
     if (!t) return;
@@ -585,7 +592,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     if (t.dataset.cat) { S.cat = t.dataset.cat; render(); return; }
     if (t.dataset.hk) { S.histKind = t.dataset.hk; render(); return; }
     if (t.dataset.mode) { syncForm(); S.mode = t.dataset.mode; S.err = ""; render(); return; }
-    var act = t.dataset.act, id = t.dataset.id;
+    var act = t.dataset.act, id = t.dataset.id || ((act === "commit" || act === "close") ? S.open : undefined);
     var it = id ? S.items.find(function (x) { return x.id === id; }) : null;
     if (!act) return;
 
@@ -608,11 +615,13 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       if (S.mode === "adjust" && n === it.qty) { S.err = "現在の数量と同じです。"; render(); return; }
       try {
         var r = await changeQty(it, S.mode, n, f.note || "");
-        S.err = ""; S.open = null; S.form = null; render();
+        S.err = ""; S.open = null; S.form = null; render(); scrollRow(it.id);
         toast(it.name + "：" + KIND[S.mode] + "を記録しました（残 " + r.after + "）", function () {
           undoChange(it, r).catch(function () { toast("取り消せませんでした"); });
         });
       } catch (err) { S.err = err && err.code === "negative" ? "在庫がマイナスになります。" : "保存できませんでした。もう一度お試しください。"; render(); }
+    } else if (act === "close") {
+      S.open = null; S.form = null; S.err = ""; S.confirmDelete = null; render(); scrollRow(id);
     } else if (act === "add") {
       S.adding = true; S.editing = null; S.open = null; S.form = blankForm(); S.err = ""; render();
       var fn = $("f_name"); if (fn) fn.focus();
