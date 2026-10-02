@@ -182,10 +182,14 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
 (function () {
   "use strict";
   var CATS = ["水栓金具", "キッチン", "洗面・化粧台", "トイレ", "浴室・ユニットバス", "給湯器・ボイラー", "換気・空調", "配管部材", "電気・照明", "工具・消耗品", "その他"];
+  var MAKERS = ["リンナイ", "ノーリツ", "TOTO", "LIXIL", "三菱", "東芝", "パナソニック"];
+  var OTHER = "その他";
+  function makerOf(it) { return it.maker || (MAKERS.indexOf(it.model) >= 0 ? it.model : ""); }
+  function modelOf(it) { return it.maker ? (it.model || "") : (MAKERS.indexOf(it.model) >= 0 ? "" : (it.model || "")); }
   var KIND = { out: "出庫", "in": "入庫", adjust: "棚卸修正" };
 
   var S = {
-    tab: "stock", cat: "all", stock: "all", q: "",
+    tab: "stock", cat: "all", stock: "all", maker: "all", q: "",
     items: [], log: [], itemsReady: false, logReady: false,
     open: null, mode: "out", form: null, adding: false, editing: null, confirmDelete: null,
     histItem: null, histKind: "all",
@@ -313,8 +317,9 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       var st = stateOf(it);
       if (S.stock === "low" && st === "ok") return false;
       if (S.stock === "zero" && st !== "zero") return false;
+      if (S.maker !== "all" && makerOf(it) !== S.maker) return false;
       if (q) {
-        var hay = [it.name, it.model, it.loc, it.cat].join(" ").toLowerCase();
+        var hay = [it.name, makerOf(it), modelOf(it), it.loc, it.cat].join(" ").toLowerCase();
         if (hay.indexOf(q) < 0) return false;
       }
       return true;
@@ -338,6 +343,14 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       '<div class="stat out"><span>今日の出庫</span><b>' + outToday + "</b></div>";
   }
 
+  function makerFilterOpts() {
+    var seen = {}, list = [];
+    MAKERS.forEach(function (m) { seen[m] = 1; list.push(m); });
+    S.items.forEach(function (it) { var m = makerOf(it); if (m && !seen[m]) { seen[m] = 1; list.push(m); } });
+    return '<option value="all">メーカーすべて</option>' + list.map(function (m) {
+      return '<option value="' + esc(m) + '"' + (S.maker === m ? " selected" : "") + ">" + esc(m) + "</option>";
+    }).join("");
+  }
   function toolbarHTML() {
     var counts = { all: S.items.length };
     S.items.forEach(function (it) { var c = it.cat || "その他"; counts[c] = (counts[c] || 0) + 1; });
@@ -348,18 +361,22 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     return '<div class="toolbar"><div class="toolrow">' +
       '<input type="text" class="search" id="q" placeholder="品名・型番・置き場で検索" value="' + esc(S.q) + '" aria-label="検索">' +
       '<select id="stockSel" aria-label="在庫状態" style="width:auto"><option value="all"' + (S.stock === "all" ? " selected" : "") + '>在庫すべて</option><option value="low"' + (S.stock === "low" ? " selected" : "") + '>わずか・切れ</option><option value="zero"' + (S.stock === "zero" ? " selected" : "") + '>在庫切れのみ</option></select>' +
+      '<select id="makerSel" aria-label="メーカー" style="width:auto">' + makerFilterOpts() + '</select>' +
       (S.canWrite ? '<button class="btn primary" data-act="add">＋ 品目を追加</button>' : "") +
       (downloads ? '<button class="btn" data-act="csv">CSVで保存</button>' : "") +
       '</div><div class="chips">' + chips + "</div></div>";
   }
 
   function formHTML(f, isEdit) {
+    var makerOpts = MAKERS.concat([OTHER]).map(function (m) { return '<option value="' + esc(m) + '"' + (f.maker === m ? " selected" : "") + ">" + esc(m) + "</option>"; }).join("");
     var catOpts = CATS.map(function (c) { return '<option value="' + esc(c) + '"' + (f.cat === c ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
     return '<div class="formcard"><h3>' + (isEdit ? "品目を編集" : "品目を追加") + "</h3>" +
       '<div class="fields">' +
       '<label class="f">品名<input type="text" id="f_name" value="' + esc(f.name) + '" placeholder="例：シングルレバー混合栓"></label>' +
       '<label class="f">カテゴリ<select id="f_cat">' + catOpts + "</select></label>" +
-      '<label class="f">型番・メーカー<input type="text" id="f_model" value="' + esc(f.model) + '"></label>' +
+      '<label class="f">メーカー<select id="f_maker"><option value="">選択してください</option>' + makerOpts + '</select></label>' +
+      '<label class="f" id="f_makerOtherWrap"' + (f.maker === OTHER ? "" : " hidden") + '>メーカー名（その他）<input type="text" id="f_makerOther" value="' + esc(f.makerOther) + '"></label>' +
+      '<label class="f">型番<input type="text" id="f_model" value="' + esc(f.model) + '" placeholder="例：RUX-A1615WE/13A"></label>' +
       '<label class="f">置き場<input type="text" id="f_loc" value="' + esc(f.loc) + '" placeholder="例：倉庫A 棚3"></label>' +
       '<label class="f">単位<input type="text" id="f_unit" value="' + esc(f.unit) + '" placeholder="個・台・本・セット"></label>' +
       (isEdit ? "" : '<label class="f">現在の数量<input type="number" id="f_qty" min="0" step="1" inputmode="numeric" value="' + esc(f.qty) + '"></label>') +
@@ -402,7 +419,8 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     var st = stateOf(it), lo = lastOutOf(it.id), open = S.open === it.id;
     var pill = st === "zero" ? '<span class="pill zero">在庫切れ</span>' : (st === "low" ? '<span class="pill low">残りわずか</span>' : "");
     var meta = [];
-    if (it.model) meta.push('<span class="mono">' + esc(it.model) + "</span>");
+    if (makerOf(it)) meta.push("<b>" + esc(makerOf(it)) + "</b>");
+    if (modelOf(it)) meta.push('<span class="mono">' + esc(modelOf(it)) + "</span>");
     if (it.loc) meta.push("置き場 " + esc(it.loc));
     if (it.min) meta.push("目安 " + it.min + esc(it.unit || ""));
     var last = lo
@@ -491,10 +509,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   document.addEventListener("focusout", function () { if (pendingRender) setTimeout(function () { if (pendingRender) render(); }, 0); });
 
   /* ---------- events ---------- */
-  function blankForm() { return { name: "", cat: S.cat !== "all" ? S.cat : CATS[0], model: "", loc: "", unit: "個", qty: "0", min: "" }; }
+  function blankForm() { return { name: "", cat: S.cat !== "all" ? S.cat : CATS[0], maker: S.maker !== "all" ? S.maker : "", makerOther: "", model: "", loc: "", unit: "個", qty: "0", min: "" }; }
   function readItemForm() {
     var g = function (id) { var e = $(id); return e ? e.value.trim() : ""; };
-    return { name: g("f_name"), cat: g("f_cat"), model: g("f_model"), loc: g("f_loc"), unit: g("f_unit"), qty: g("f_qty"), min: g("f_min") };
+    return { name: g("f_name"), cat: g("f_cat"), maker: g("f_maker"), makerOther: g("f_makerOther"), model: g("f_model"), loc: g("f_loc"), unit: g("f_unit"), qty: g("f_qty"), min: g("f_min") };
   }
   function syncForm() {
     if (S.adding || S.editing) { var v = readItemForm(); if (v.name !== undefined) S.form = Object.assign(S.form || {}, v); }
@@ -525,6 +543,11 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   }
   document.addEventListener("change", function (e) {
     if (e.target.id === "stockSel") { S.stock = e.target.value; render(); }
+    if (e.target.id === "makerSel") { S.maker = e.target.value; render(); }
+    if (e.target.id === "f_maker") {
+      var o = $("f_makerOtherWrap"); if (o) o.hidden = e.target.value !== OTHER;
+      var oi = $("f_makerOther"); if (oi && e.target.value === OTHER) oi.focus();
+    }
   });
 
   document.addEventListener("click", async function (e) {
@@ -567,7 +590,8 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       var fn = $("f_name"); if (fn) fn.focus();
     } else if (act === "edit" && it) {
       S.editing = id; S.adding = false; S.open = null;
-      S.form = { name: it.name || "", cat: it.cat || CATS[0], model: it.model || "", loc: it.loc || "", unit: it.unit || "", min: it.min ? String(it.min) : "" };
+      var mk = makerOf(it), known = !mk || MAKERS.indexOf(mk) >= 0;
+      S.form = { name: it.name || "", cat: it.cat || CATS[0], maker: known ? mk : OTHER, makerOther: known ? "" : mk, model: modelOf(it), loc: it.loc || "", unit: it.unit || "", min: it.min ? String(it.min) : "" };
       S.err = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" });
     } else if (act === "cancelForm") {
       S.adding = false; S.editing = null; S.form = null; S.err = ""; render();
@@ -575,15 +599,17 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       var v = readItemForm();
       S.form = v;
       if (!v.name) { S.err = "品名を入力してください。"; render(); return; }
+      var makerName = v.maker === OTHER ? v.makerOther : v.maker;
+      if (v.maker === OTHER && !makerName) { S.err = "メーカー名を入力してください。"; render(); return; }
       var qty = Number(v.qty || 0), min = Number(v.min || 0);
       if (!S.editing && (isNaN(qty) || qty < 0 || Math.floor(qty) !== qty)) { S.err = "数量は0以上の整数で入力してください。"; render(); return; }
       if (isNaN(min) || min < 0 || Math.floor(min) !== min) { S.err = "補充の目安は0以上の整数で入力してください。"; render(); return; }
       try {
         if (S.editing) {
-          await enqueue(function () { return itemsCol.doc(S.editing).update({ name: v.name, cat: v.cat, model: v.model, loc: v.loc, unit: v.unit || "個", min: min, updatedAt: Date.now() }); });
+          await enqueue(function () { return itemsCol.doc(S.editing).update({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", min: min, updatedAt: Date.now() }); });
           toast("品目を更新しました");
         } else {
-          var ref = await enqueue(function () { return itemsCol.add({ name: v.name, cat: v.cat, model: v.model, loc: v.loc, unit: v.unit || "個", qty: qty, min: min, createdAt: Date.now(), updatedAt: Date.now() }); });
+          var ref = await enqueue(function () { return itemsCol.add({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", qty: qty, min: min, createdAt: Date.now(), updatedAt: Date.now() }); });
           if (qty > 0) await enqueue(function () { return logCol.add({ ts: Date.now(), itemId: ref.id, itemName: v.name, cat: v.cat, unit: v.unit || "個", kind: "adjust", n: qty, delta: qty, before: 0, after: qty, by: S.uid || null, note: "新規登録" }); });
           toast(v.name + " を追加しました");
         }
@@ -602,10 +628,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       S.histItem = null; render();
     } else if (act === "csv") {
       try {
-        var rows = [["カテゴリ", "品名", "型番・メーカー", "置き場", "単位", "数量", "補充の目安", "最終出庫"]];
+        var rows = [["カテゴリ", "品名", "メーカー", "型番", "置き場", "単位", "数量", "補充の目安", "最終出庫"]];
         filteredItems().forEach(function (x) {
           var lo = lastOutOf(x.id);
-          rows.push([x.cat || "", x.name, x.model || "", x.loc || "", x.unit || "", x.qty, x.min || 0, lo ? md(lo.ts) + " " + hm(lo.ts) : ""]);
+          rows.push([x.cat || "", x.name, makerOf(x), modelOf(x), x.loc || "", x.unit || "", x.qty, x.min || 0, lo ? md(lo.ts) + " " + hm(lo.ts) : ""]);
         });
         var csv = "﻿" + rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
         await downloads.save({ filename: "棚卸表_" + dayKey(Date.now()) + ".csv", data: csv });
