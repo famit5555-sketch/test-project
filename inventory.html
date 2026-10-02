@@ -1,0 +1,644 @@
+<title>住設機器 棚卸表</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: sticky toolbar, summary strip, category-grouped stock rows (one row per item, stepper on the right); history is a second tab grouped by day. */
+:root {
+  --bg: #edf1f3;
+  --surface: #ffffff;
+  --surface-2: #f5f8f9;
+  --ink: #13222a;
+  --muted: #586c76;
+  --line: #d3dde2;
+  --accent: #0a7385;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcf0f3;
+  --out: #b4470c;
+  --out-soft: #fbe9dc;
+  --in: #0a7385;
+  --in-soft: #dcf0f3;
+  --warn: #8a5a00;
+  --warn-soft: #fff0c9;
+  --bad: #a3221f;
+  --bad-soft: #fde2e0;
+  --ok: #1d6b3a;
+  --font-body: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1a1f; --surface: #172830; --surface-2: #1d313a; --ink: #e6eef1; --muted: #93a8b1; --line: #2b424c;
+    --accent: #4bc0d4; --accent-ink: #072b33; --accent-soft: #14434d;
+    --out: #f2a366; --out-soft: #43281a; --in: #4bc0d4; --in-soft: #14434d;
+    --warn: #f0c35a; --warn-soft: #43360f; --bad: #f39a96; --bad-soft: #4a1f1d; --ok: #7fd49a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1a1f; --surface: #172830; --surface-2: #1d313a; --ink: #e6eef1; --muted: #93a8b1; --line: #2b424c;
+  --accent: #4bc0d4; --accent-ink: #072b33; --accent-soft: #14434d;
+  --out: #f2a366; --out-soft: #43281a; --in: #4bc0d4; --in-soft: #14434d;
+  --warn: #f0c35a; --warn-soft: #43360f; --bad: #f39a96; --bad-soft: #4a1f1d; --ok: #7fd49a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 72px; display: grid; gap: 16px; }
+
+header.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 16px; }
+h1 { margin: 0; font-size: 22px; line-height: 1.3; letter-spacing: .02em; text-wrap: balance; }
+.sub { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.sync { font-size: 12px; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.dot.live { background: var(--ok); }
+
+.summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; min-width: 0; }
+.stat span { display: block; font-size: 12px; color: var(--muted); }
+.stat b { font-family: var(--font-num); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.stat.bad b { color: var(--bad); }
+.stat.warn b { color: var(--warn); }
+.stat.out b { color: var(--out); }
+
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 14px; font-weight: 700; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
+
+.toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); padding-block: 8px; display: grid; gap: 8px; }
+.toolrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.search { flex: 1 1 200px; min-width: 0; }
+input[type=text], input[type=number], select, textarea { width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; min-width: 0; }
+textarea { resize: vertical; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 9px 14px; font-weight: 700; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.danger { color: var(--bad); }
+.btn.sm { padding: 5px 10px; font-size: 13px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.chip { flex: none; border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 4px 12px; font-size: 13px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.chip i { font-style: normal; font-family: var(--font-num); opacity: .75; margin-left: 4px; }
+
+.group { display: grid; gap: 6px; }
+.group h2 { margin: 10px 0 0; font-size: 13px; letter-spacing: .08em; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.group h2 i { font-style: normal; font-family: var(--font-num); }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px; }
+.row.is-open { border-color: var(--accent); }
+.name { margin: 0; font-size: 15px; font-weight: 700; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; overflow-wrap: anywhere; }
+.meta { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.meta .mono { font-family: var(--font-num); }
+.last { font-size: 12.5px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.last b { color: var(--out); font-weight: 700; font-family: var(--font-num); font-size: 13px; }
+.last .none { color: var(--muted); }
+.pill { font-size: 11.5px; font-weight: 700; border-radius: 999px; padding: 1px 8px; }
+.pill.low { background: var(--warn-soft); color: var(--warn); }
+.pill.zero { background: var(--bad-soft); color: var(--bad); }
+.pill.out { background: var(--out-soft); color: var(--out); }
+.pill.in { background: var(--in-soft); color: var(--in); }
+.pill.adj { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
+.qty { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; justify-self: end; }
+.qty button { border: 0; background: var(--surface-2); width: 44px; font-size: 20px; font-weight: 700; }
+.qty button:hover:not([disabled]) { background: var(--accent-soft); }
+.qty button[disabled] { opacity: .4; cursor: not-allowed; }
+.qty .num { width: 78px; background: var(--surface); font-family: var(--font-num); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; justify-content: center; gap: 3px; padding: 6px 4px; border-inline: 1px solid var(--line); }
+.qty .num small { font-family: var(--font-body); font-size: 11px; font-weight: 400; color: var(--muted); }
+.num.zero { color: var(--bad); }
+.num.low { color: var(--warn); }
+
+.panel { grid-column: 1 / -1; border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; width: fit-content; max-width: 100%; }
+.seg button { border: 0; background: var(--surface); padding: 8px 14px; font-weight: 700; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.seg button[aria-pressed="true"].is-out { background: var(--out); color: #fff; }
+.fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-weight: 500; min-width: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.actions .grow { flex: 1; }
+.preview { font-size: 13px; color: var(--muted); }
+.preview b { font-family: var(--font-num); color: var(--ink); }
+.err { color: var(--bad); font-size: 13px; margin: 0; }
+
+.day { margin: 12px 0 2px; font-size: 13px; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+.hist { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 52px auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 9px 12px; }
+.hist .t { font-family: var(--font-num); font-size: 13px; color: var(--muted); }
+.hist .what { min-width: 0; overflow-wrap: anywhere; }
+.hist .what b { font-weight: 700; }
+.hist .what .x { font-family: var(--font-num); font-weight: 600; margin-left: 6px; }
+.hist .by { grid-column: 3 / 5; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.hist .after { font-family: var(--font-num); font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.hist.cancelled .what { text-decoration: line-through; color: var(--muted); }
+.filterbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.tag { display: inline-flex; align-items: center; gap: 6px; background: var(--accent-soft); color: var(--accent); border-radius: 999px; padding: 3px 4px 3px 12px; font-size: 13px; font-weight: 700; }
+.tag button { border: 0; background: none; font-size: 16px; line-height: 1; padding: 2px 8px; color: inherit; }
+
+.empty { background: var(--surface); border: 1px dashed var(--line); border-radius: 6px; padding: 28px 20px; text-align: center; display: grid; gap: 8px; justify-items: center; }
+.empty h3 { margin: 0; font-size: 16px; }
+.empty p { margin: 0; color: var(--muted); max-width: 46ch; }
+.formcard { background: var(--surface); border: 1px solid var(--accent); border-radius: 6px; padding: 14px; display: grid; gap: 12px; }
+.formcard h3 { margin: 0; font-size: 15px; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); border-radius: 8px; padding: 10px 14px; display: flex; gap: 12px; align-items: center; max-width: calc(100vw - 32px); box-shadow: 0 6px 24px rgba(0,0,0,.25); z-index: 20; font-size: 14px; }
+.toast button { background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; padding: 0; }
+
+@media (max-width: 680px) {
+  .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .row .last { grid-column: 1 / -1; order: 3; }
+  .hist { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .hist .pill { grid-column: 2; justify-self: start; }
+  .hist .what { grid-column: 1 / -1; }
+  .hist .by { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .btn, .chip, .qty button { transition: background-color .12s, border-color .12s; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>住設機器 棚卸表</h1>
+      <p class="sub">数量の変更と出庫は、その場で全員の画面に反映されます。</p>
+    </div>
+    <span class="sync" id="sync"><span class="dot"></span><span id="syncText">読み込み中</span></span>
+  </header>
+
+  <section class="summary" id="summary" aria-label="在庫サマリー"></section>
+
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" id="tab-stock" aria-selected="true" data-tab="stock">在庫一覧</button>
+    <button class="tab" role="tab" id="tab-hist" aria-selected="false" data-tab="hist">入出庫の履歴</button>
+  </div>
+
+  <div id="view"></div>
+</div>
+<div id="toastHost"></div>
+
+<script>
+(function () {
+  "use strict";
+  var CATS = ["水栓金具", "キッチン", "洗面・化粧台", "トイレ", "浴室・ユニットバス", "給湯器・ボイラー", "換気・空調", "配管部材", "電気・照明", "工具・消耗品", "その他"];
+  var KIND = { out: "出庫", "in": "入庫", adjust: "棚卸修正" };
+
+  var S = {
+    tab: "stock", cat: "all", stock: "all", q: "",
+    items: [], log: [], itemsReady: false, logReady: false,
+    open: null, mode: "out", form: null, adding: false, editing: null, confirmDelete: null,
+    histItem: null, histKind: "all",
+    canWrite: true, uid: null, names: {}, err: ""
+  };
+  var db = null, userCap = null, downloads = null;
+  var itemsCol = null, logCol = null;
+  var queue = Promise.resolve();
+  var pendingRender = false;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  function hm(ts) { var d = new Date(ts); return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+  function md(ts) { var d = new Date(ts); return (d.getMonth() + 1) + "/" + d.getDate(); }
+  function dayKey(ts) { var d = new Date(ts); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  var WD = ["日", "月", "火", "水", "木", "金", "土"];
+  function dayLabel(ts) {
+    var d = new Date(ts), now = Date.now();
+    var base = md(ts) + "（" + WD[d.getDay()] + "）";
+    if (dayKey(ts) === dayKey(now)) return "今日 " + base;
+    if (dayKey(ts) === dayKey(now - 86400000)) return "昨日 " + base;
+    return base;
+  }
+  function ago(ts) {
+    var days = Math.floor((new Date(dayKey(Date.now())) - new Date(dayKey(ts))) / 86400000);
+    if (days <= 0) return "今日";
+    if (days === 1) return "昨日";
+    return days + "日前";
+  }
+  function who(uid) {
+    if (!uid) return "不明";
+    if (S.uid && uid === S.uid) return (S.names[uid] || "自分");
+    return S.names[uid] || "社員";
+  }
+  function stateOf(it) {
+    var q = it.qty || 0, m = it.min || 0;
+    if (q <= 0) return "zero";
+    if (m > 0 && q <= m) return "low";
+    return "ok";
+  }
+  function lastOutOf(itemId) {
+    for (var i = 0; i < S.log.length; i++) {
+      var l = S.log[i];
+      if (l.itemId === itemId && l.kind === "out" && !l.cancelled) return l;
+    }
+    return null;
+  }
+
+  /* ---------- data ---------- */
+  function setSync(live, text) {
+    $("syncText").textContent = text;
+    document.querySelector("#sync .dot").className = "dot" + (live ? " live" : "");
+  }
+  function mapDocs(snap) {
+    return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; });
+  }
+  async function resolveNames() {
+    if (!userCap) return;
+    var ids = {};
+    S.log.forEach(function (l) { if (l.by) ids[l.by] = 1; });
+    if (S.uid) ids[S.uid] = 1;
+    var list = Object.keys(ids);
+    if (!list.length) return;
+    try {
+      var ps = await userCap.profiles(list);
+      var changed = false;
+      list.forEach(function (id) {
+        var nm = ps && ps[id] && ps[id].name;
+        if (nm && S.names[id] !== nm) { S.names[id] = nm; changed = true; }
+      });
+      if (changed) render();
+    } catch (e) { /* names stay generic */ }
+  }
+  function enqueue(fn) {
+    var p = queue.then(fn);
+    queue = p.catch(function () {});
+    return p;
+  }
+
+  async function changeQty(item, kind, n, note) {
+    var before = item.qty || 0, after;
+    if (kind === "out") after = before - n;
+    else if (kind === "in") after = before + n;
+    else after = n;
+    if (after < 0) { throw { code: "negative" }; }
+    var delta = after - before;
+    return enqueue(async function () {
+      await itemsCol.doc(item.id).update({ qty: after, updatedAt: Date.now() });
+      var ref = await logCol.add({
+        ts: Date.now(), itemId: item.id, itemName: item.name, cat: item.cat || "", unit: item.unit || "",
+        kind: kind, n: kind === "adjust" ? Math.abs(delta) : n, delta: delta, before: before, after: after,
+        by: S.uid || null, note: note || ""
+      });
+      return { logId: ref.id, before: before, after: after };
+    });
+  }
+
+  async function undoChange(item, res) {
+    return enqueue(async function () {
+      await itemsCol.doc(item.id).update({ qty: res.before, updatedAt: Date.now() });
+      await logCol.doc(res.logId).update({ cancelled: true });
+    });
+  }
+
+  /* ---------- toast ---------- */
+  var toastTimer = null;
+  function toast(msg, undo) {
+    var host = $("toastHost");
+    host.innerHTML = '<div class="toast" role="status"><span>' + esc(msg) + "</span>" + (undo ? '<button id="toastUndo">取り消す</button>' : "") + "</div>";
+    if (undo) $("toastUndo").onclick = function () { host.innerHTML = ""; undo(); };
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { host.innerHTML = ""; }, undo ? 7000 : 3000);
+  }
+
+  /* ---------- derived ---------- */
+  function filteredItems() {
+    var q = S.q.trim().toLowerCase();
+    return S.items.filter(function (it) {
+      if (S.cat !== "all" && (it.cat || "その他") !== S.cat) return false;
+      var st = stateOf(it);
+      if (S.stock === "low" && st === "ok") return false;
+      if (S.stock === "zero" && st !== "zero") return false;
+      if (q) {
+        var hay = [it.name, it.model, it.loc, it.cat].join(" ").toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    }).sort(function (a, b) {
+      var ca = CATS.indexOf(a.cat || "その他"), cb = CATS.indexOf(b.cat || "その他");
+      if (ca !== cb) return ca - cb;
+      return String(a.name).localeCompare(String(b.name), "ja");
+    });
+  }
+
+  /* ---------- render ---------- */
+  function renderSummary() {
+    var low = 0, zero = 0;
+    S.items.forEach(function (it) { var s = stateOf(it); if (s === "zero") zero++; else if (s === "low") low++; });
+    var today = dayKey(Date.now()), outToday = 0;
+    S.log.forEach(function (l) { if (l.kind === "out" && !l.cancelled && dayKey(l.ts) === today) outToday++; });
+    $("summary").innerHTML =
+      '<div class="stat"><span>登録品目</span><b>' + S.items.length + "</b></div>" +
+      '<div class="stat warn"><span>残りわずか</span><b>' + low + "</b></div>" +
+      '<div class="stat bad"><span>在庫切れ</span><b>' + zero + "</b></div>" +
+      '<div class="stat out"><span>今日の出庫</span><b>' + outToday + "</b></div>";
+  }
+
+  function toolbarHTML() {
+    var counts = { all: S.items.length };
+    S.items.forEach(function (it) { var c = it.cat || "その他"; counts[c] = (counts[c] || 0) + 1; });
+    var chips = '<button class="chip" data-cat="all" aria-pressed="' + (S.cat === "all") + '">すべて<i>' + counts.all + "</i></button>";
+    CATS.forEach(function (c) {
+      if (counts[c]) chips += '<button class="chip" data-cat="' + esc(c) + '" aria-pressed="' + (S.cat === c) + '">' + esc(c) + "<i>" + counts[c] + "</i></button>";
+    });
+    return '<div class="toolbar"><div class="toolrow">' +
+      '<input type="text" class="search" id="q" placeholder="品名・型番・置き場で検索" value="' + esc(S.q) + '" aria-label="検索">' +
+      '<select id="stockSel" aria-label="在庫状態" style="width:auto"><option value="all"' + (S.stock === "all" ? " selected" : "") + '>在庫すべて</option><option value="low"' + (S.stock === "low" ? " selected" : "") + '>わずか・切れ</option><option value="zero"' + (S.stock === "zero" ? " selected" : "") + '>在庫切れのみ</option></select>' +
+      (S.canWrite ? '<button class="btn primary" data-act="add">＋ 品目を追加</button>' : "") +
+      (downloads ? '<button class="btn" data-act="csv">CSVで保存</button>' : "") +
+      '</div><div class="chips">' + chips + "</div></div>";
+  }
+
+  function formHTML(f, isEdit) {
+    var catOpts = CATS.map(function (c) { return '<option value="' + esc(c) + '"' + (f.cat === c ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
+    return '<div class="formcard"><h3>' + (isEdit ? "品目を編集" : "品目を追加") + "</h3>" +
+      '<div class="fields">' +
+      '<label class="f">品名<input type="text" id="f_name" value="' + esc(f.name) + '" placeholder="例：シングルレバー混合栓"></label>' +
+      '<label class="f">カテゴリ<select id="f_cat">' + catOpts + "</select></label>" +
+      '<label class="f">型番・メーカー<input type="text" id="f_model" value="' + esc(f.model) + '"></label>' +
+      '<label class="f">置き場<input type="text" id="f_loc" value="' + esc(f.loc) + '" placeholder="例：倉庫A 棚3"></label>' +
+      '<label class="f">単位<input type="text" id="f_unit" value="' + esc(f.unit) + '" placeholder="個・台・本・セット"></label>' +
+      (isEdit ? "" : '<label class="f">現在の数量<input type="number" id="f_qty" min="0" step="1" inputmode="numeric" value="' + esc(f.qty) + '"></label>') +
+      '<label class="f">補充の目安（この数以下で警告）<input type="number" id="f_min" min="0" step="1" inputmode="numeric" value="' + esc(f.min) + '"></label>' +
+      "</div>" + (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
+      '<div class="actions"><button class="btn primary" data-act="saveItem">' + (isEdit ? "保存" : "追加") + '</button><button class="btn" data-act="cancelForm">キャンセル</button></div></div>';
+  }
+
+  function panelHTML(it) {
+    var f = S.form || { n: "", note: "" };
+    var isOut = S.mode === "out";
+    var label = S.mode === "adjust" ? "実際に数えた数量" : (isOut ? "出庫する数" : "入庫する数");
+    var n = Number(f.n), prev = "";
+    if (f.n !== "" && !isNaN(n)) {
+      var after = S.mode === "out" ? it.qty - n : (S.mode === "in" ? it.qty + n : n);
+      prev = '<span class="preview">' + it.qty + " → <b>" + after + "</b> " + esc(it.unit || "") + "</span>";
+    }
+    var noteLabel = isOut ? "出庫先・現場名" : "メモ";
+    var noteHint = isOut ? "例：山田様邸 リフォーム" : "例：仕入先、棚卸の理由";
+    var confirm = S.confirmDelete === it.id;
+    return '<div class="panel">' +
+      '<div class="seg" role="group" aria-label="操作">' +
+      '<button data-mode="out" class="is-out" aria-pressed="' + (S.mode === "out") + '">出庫</button>' +
+      '<button data-mode="in" aria-pressed="' + (S.mode === "in") + '">入庫</button>' +
+      '<button data-mode="adjust" aria-pressed="' + (S.mode === "adjust") + '">棚卸で修正</button></div>' +
+      '<div class="fields">' +
+      '<label class="f">' + label + '<input type="number" id="p_n" min="0" step="1" inputmode="numeric" value="' + esc(f.n) + '"></label>' +
+      '<label class="f" style="grid-column: span 2">' + noteLabel + '<input type="text" id="p_note" value="' + esc(f.note) + '" placeholder="' + noteHint + '"></label></div>' +
+      (S.err ? '<p class="err">' + esc(S.err) + "</p>" : "") +
+      '<div class="actions"><button class="btn primary" data-act="commit">記録する</button>' + prev + '<span class="grow"></span>' +
+      '<button class="btn sm" data-act="showHist" data-id="' + esc(it.id) + '">この品目の履歴</button>' +
+      '<button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '">品目を編集</button>' +
+      (confirm
+        ? '<button class="btn sm danger" data-act="delete" data-id="' + esc(it.id) + '">本当に削除する</button>'
+        : '<button class="btn sm danger" data-act="askDelete" data-id="' + esc(it.id) + '">削除</button>') +
+      "</div></div>";
+  }
+
+  function rowHTML(it) {
+    var st = stateOf(it), lo = lastOutOf(it.id), open = S.open === it.id;
+    var pill = st === "zero" ? '<span class="pill zero">在庫切れ</span>' : (st === "low" ? '<span class="pill low">残りわずか</span>' : "");
+    var meta = [];
+    if (it.model) meta.push('<span class="mono">' + esc(it.model) + "</span>");
+    if (it.loc) meta.push("置き場 " + esc(it.loc));
+    if (it.min) meta.push("目安 " + it.min + esc(it.unit || ""));
+    var last = lo
+      ? "最終出庫 <b>" + md(lo.ts) + " " + hm(lo.ts) + "</b>（" + ago(lo.ts) + "）<br>" + esc(who(lo.by)) + " ・ " + lo.n + esc(lo.unit || it.unit || "") + (lo.note ? " ・ " + esc(lo.note) : "")
+      : '<span class="none">出庫の記録なし</span>';
+    var w = S.canWrite;
+    return '<article class="row' + (open ? " is-open" : "") + '" data-id="' + esc(it.id) + '">' +
+      '<div><h3 class="name">' + esc(it.name) + " " + pill + '</h3><p class="meta">' + (meta.join(" ・ ") || "&nbsp;") + "</p></div>" +
+      '<div class="last">' + last + "</div>" +
+      '<div class="qty"><button data-act="quick" data-kind="out" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ出庫"' + (w && it.qty > 0 ? "" : " disabled") + ">−</button>" +
+      '<button class="num ' + st + '" data-act="open" data-id="' + esc(it.id) + '" aria-expanded="' + open + '" aria-label="' + esc(it.name) + ' 数量 ' + it.qty + ' 詳細を開く">' + it.qty + "<small>" + esc(it.unit || "") + "</small></button>" +
+      '<button data-act="quick" data-kind="in" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ入庫"' + (w ? "" : " disabled") + ">＋</button></div>" +
+      (open && w ? panelHTML(it) : "") + "</article>";
+  }
+
+  function stockHTML() {
+    var html = toolbarHTML();
+    if (S.adding && S.canWrite) html += formHTML(S.form, false);
+    if (S.editing) {
+      // edit form is rendered in place of the list header
+      html += formHTML(S.form, true);
+    }
+    if (!S.itemsReady) return html + '<div class="empty"><p>読み込み中です</p></div>';
+    var list = filteredItems();
+    if (!S.items.length) {
+      return html + '<div class="empty"><h3>まだ品目が登録されていません</h3><p>「＋ 品目を追加」から、品名・型番・置き場・現在の数量を登録してください。登録した品目は全員の画面に表示され、数量の変更と出庫の履歴が残ります。</p>' +
+        (S.canWrite ? '<button class="btn primary" data-act="add">＋ 最初の品目を追加</button>' : "<p>編集権限がないため、閲覧のみ可能です。</p>") + "</div>";
+    }
+    if (!list.length) return html + '<div class="empty"><h3>条件に合う品目がありません</h3><p>検索語やカテゴリを変えてください。</p></div>';
+    var cur = null;
+    list.forEach(function (it) {
+      var c = it.cat || "その他";
+      if (c !== cur) {
+        if (cur !== null) html += "</section>";
+        var n = list.filter(function (x) { return (x.cat || "その他") === c; }).length;
+        html += '<section class="group"><h2>' + esc(c) + "<i>" + n + "品目</i></h2>";
+        cur = c;
+      }
+      html += rowHTML(it);
+    });
+    return html + "</section>";
+  }
+
+  function histHTML() {
+    var kinds = [["all", "すべて"], ["out", "出庫"], ["in", "入庫"], ["adjust", "棚卸修正"]];
+    var html = '<div class="toolbar"><div class="filterbar"><div class="chips">' +
+      kinds.map(function (k) { return '<button class="chip" data-hk="' + k[0] + '" aria-pressed="' + (S.histKind === k[0]) + '">' + k[1] + "</button>"; }).join("") +
+      "</div>" + (S.histItem ? '<span class="tag">' + esc(itemName(S.histItem)) + '<button data-act="clearHistItem" aria-label="品目の絞り込みを解除">×</button></span>' : "") +
+      "</div></div>";
+    if (!S.logReady) return html + '<div class="empty"><p>読み込み中です</p></div>';
+    var rows = S.log.filter(function (l) {
+      if (S.histItem && l.itemId !== S.histItem) return false;
+      if (S.histKind !== "all" && l.kind !== S.histKind) return false;
+      return true;
+    });
+    if (!rows.length) return html + '<div class="empty"><h3>履歴はまだありません</h3><p>数量を変更すると、日時・担当者・出庫先がここに並びます。</p></div>';
+    var day = null;
+    html += '<div style="display:grid;gap:6px">';
+    rows.forEach(function (l) {
+      var k = dayKey(l.ts);
+      if (k !== day) { html += '<div class="day">' + esc(dayLabel(l.ts)) + "</div>"; day = k; }
+      var cls = l.kind === "out" ? "out" : (l.kind === "in" ? "in" : "adj");
+      var sign = l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
+      html += '<div class="hist' + (l.cancelled ? " cancelled" : "") + '"><span class="t">' + hm(l.ts) + '</span><span class="pill ' + cls + '">' + KIND[l.kind] + (l.cancelled ? "（取消）" : "") + "</span>" +
+        '<span class="what"><b>' + esc(l.itemName) + '</b><span class="x">' + sign + esc(l.unit || "") + "</span></span>" +
+        '<span class="after">残 ' + l.after + "</span>" +
+        '<span class="by">' + esc(who(l.by)) + (l.note ? " ・ " + esc(l.note) : "") + "</span></div>";
+    });
+    return html + "</div>";
+  }
+  function itemName(id) {
+    for (var i = 0; i < S.items.length; i++) if (S.items[i].id === id) return S.items[i].name;
+    for (var j = 0; j < S.log.length; j++) if (S.log[j].itemId === id) return S.log[j].itemName;
+    return "品目";
+  }
+
+  function render() {
+    var a = document.activeElement;
+    if (a && a.closest && a.closest(".panel, .formcard, .toolbar") && /INPUT|TEXTAREA|SELECT/.test(a.tagName)) { pendingRender = true; return; }
+    pendingRender = false;
+    renderSummary();
+    $("tab-stock").setAttribute("aria-selected", S.tab === "stock");
+    $("tab-hist").setAttribute("aria-selected", S.tab === "hist");
+    $("view").innerHTML = S.tab === "stock" ? stockHTML() : histHTML();
+  }
+  document.addEventListener("focusout", function () { if (pendingRender) setTimeout(function () { if (pendingRender) render(); }, 0); });
+
+  /* ---------- events ---------- */
+  function blankForm() { return { name: "", cat: S.cat !== "all" ? S.cat : CATS[0], model: "", loc: "", unit: "個", qty: "0", min: "" }; }
+  function readItemForm() {
+    var g = function (id) { var e = $(id); return e ? e.value.trim() : ""; };
+    return { name: g("f_name"), cat: g("f_cat"), model: g("f_model"), loc: g("f_loc"), unit: g("f_unit"), qty: g("f_qty"), min: g("f_min") };
+  }
+  function syncForm() {
+    if (S.adding || S.editing) { var v = readItemForm(); if (v.name !== undefined) S.form = Object.assign(S.form || {}, v); }
+    else if (S.open) {
+      var n = $("p_n"), no = $("p_note");
+      S.form = { n: n ? n.value : "", note: no ? no.value : "" };
+    }
+  }
+
+  document.addEventListener("input", function (e) {
+    if (e.target.id === "q") { S.q = e.target.value; var pos = e.target.selectionStart; pendingRender = false; renderKeepSearch(pos); return; }
+    if (e.target.id === "p_n") {
+      S.form = S.form || {}; S.form.n = e.target.value;
+      var it = S.items.find(function (x) { return x.id === S.open; });
+      var pv = document.querySelector(".panel .preview");
+      if (it && pv) {
+        var n = Number(e.target.value);
+        if (e.target.value === "" || isNaN(n)) pv.innerHTML = "";
+        else { var after = S.mode === "out" ? it.qty - n : (S.mode === "in" ? it.qty + n : n); pv.innerHTML = it.qty + " → <b>" + after + "</b> " + esc(it.unit || ""); }
+      }
+    }
+    if (e.target.id === "p_note") { S.form = S.form || {}; S.form.note = e.target.value; }
+  });
+  function renderKeepSearch(pos) {
+    renderSummary();
+    $("view").innerHTML = stockHTML();
+    var q = $("q"); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (_) {} }
+  }
+  document.addEventListener("change", function (e) {
+    if (e.target.id === "stockSel") { S.stock = e.target.value; render(); }
+  });
+
+  document.addEventListener("click", async function (e) {
+    var t = e.target.closest("button");
+    if (!t) return;
+    if (t.dataset.tab) { S.tab = t.dataset.tab; render(); return; }
+    if (t.dataset.cat) { S.cat = t.dataset.cat; render(); return; }
+    if (t.dataset.hk) { S.histKind = t.dataset.hk; render(); return; }
+    if (t.dataset.mode) { syncForm(); S.mode = t.dataset.mode; S.err = ""; render(); return; }
+    var act = t.dataset.act, id = t.dataset.id;
+    var it = id ? S.items.find(function (x) { return x.id === id; }) : null;
+    if (!act) return;
+
+    if (act === "open") {
+      if (S.open === id) { S.open = null; } else { S.open = id; S.mode = "out"; S.form = { n: "1", note: "" }; S.confirmDelete = null; }
+      S.adding = false; S.editing = null; S.err = ""; render();
+    } else if (act === "quick" && it) {
+      var kind = t.dataset.kind;
+      try {
+        var res = await changeQty(it, kind, 1, "");
+        toast(it.name + " を1" + (it.unit || "") + (kind === "out" ? "出庫" : "入庫") + "しました（残 " + res.after + "）", function () {
+          undoChange(it, res).catch(function () { toast("取り消せませんでした"); });
+        });
+      } catch (err) { toast(err && err.code === "negative" ? "在庫がマイナスになるため記録できません" : "保存できませんでした。もう一度お試しください"); }
+    } else if (act === "commit" && it) {
+      syncForm();
+      var f = S.form || {}, n = Number(f.n);
+      if (f.n === "" || isNaN(n) || n < 0 || Math.floor(n) !== n || (S.mode !== "adjust" && n === 0)) { S.err = "数量は0以上の整数で入力してください。"; render(); return; }
+      if (S.mode === "out" && n > it.qty) { S.err = "在庫（" + it.qty + "）より多くは出庫できません。"; render(); return; }
+      if (S.mode === "adjust" && n === it.qty) { S.err = "現在の数量と同じです。"; render(); return; }
+      try {
+        var r = await changeQty(it, S.mode, n, f.note || "");
+        S.err = ""; S.open = null; S.form = null; render();
+        toast(it.name + "：" + KIND[S.mode] + "を記録しました（残 " + r.after + "）", function () {
+          undoChange(it, r).catch(function () { toast("取り消せませんでした"); });
+        });
+      } catch (err) { S.err = err && err.code === "negative" ? "在庫がマイナスになります。" : "保存できませんでした。もう一度お試しください。"; render(); }
+    } else if (act === "add") {
+      S.adding = true; S.editing = null; S.open = null; S.form = blankForm(); S.err = ""; render();
+      var fn = $("f_name"); if (fn) fn.focus();
+    } else if (act === "edit" && it) {
+      S.editing = id; S.adding = false; S.open = null;
+      S.form = { name: it.name || "", cat: it.cat || CATS[0], model: it.model || "", loc: it.loc || "", unit: it.unit || "", min: it.min ? String(it.min) : "" };
+      S.err = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" });
+    } else if (act === "cancelForm") {
+      S.adding = false; S.editing = null; S.form = null; S.err = ""; render();
+    } else if (act === "saveItem") {
+      var v = readItemForm();
+      S.form = v;
+      if (!v.name) { S.err = "品名を入力してください。"; render(); return; }
+      var qty = Number(v.qty || 0), min = Number(v.min || 0);
+      if (!S.editing && (isNaN(qty) || qty < 0 || Math.floor(qty) !== qty)) { S.err = "数量は0以上の整数で入力してください。"; render(); return; }
+      if (isNaN(min) || min < 0 || Math.floor(min) !== min) { S.err = "補充の目安は0以上の整数で入力してください。"; render(); return; }
+      try {
+        if (S.editing) {
+          await enqueue(function () { return itemsCol.doc(S.editing).update({ name: v.name, cat: v.cat, model: v.model, loc: v.loc, unit: v.unit || "個", min: min, updatedAt: Date.now() }); });
+          toast("品目を更新しました");
+        } else {
+          var ref = await enqueue(function () { return itemsCol.add({ name: v.name, cat: v.cat, model: v.model, loc: v.loc, unit: v.unit || "個", qty: qty, min: min, createdAt: Date.now(), updatedAt: Date.now() }); });
+          if (qty > 0) await enqueue(function () { return logCol.add({ ts: Date.now(), itemId: ref.id, itemName: v.name, cat: v.cat, unit: v.unit || "個", kind: "adjust", n: qty, delta: qty, before: 0, after: qty, by: S.uid || null, note: "新規登録" }); });
+          toast(v.name + " を追加しました");
+        }
+        S.adding = false; S.editing = null; S.form = null; S.err = ""; render();
+      } catch (err) { S.err = "保存できませんでした。もう一度お試しください。"; render(); }
+    } else if (act === "askDelete") {
+      S.confirmDelete = id; render();
+    } else if (act === "delete" && it) {
+      try {
+        await enqueue(function () { return itemsCol.doc(id).delete(); });
+        S.open = null; S.confirmDelete = null; render(); toast(it.name + " を削除しました（履歴は残ります）");
+      } catch (err) { toast("削除できませんでした"); }
+    } else if (act === "showHist") {
+      S.histItem = id; S.histKind = "all"; S.tab = "hist"; render(); window.scrollTo({ top: 0 });
+    } else if (act === "clearHistItem") {
+      S.histItem = null; render();
+    } else if (act === "csv") {
+      try {
+        var rows = [["カテゴリ", "品名", "型番・メーカー", "置き場", "単位", "数量", "補充の目安", "最終出庫"]];
+        filteredItems().forEach(function (x) {
+          var lo = lastOutOf(x.id);
+          rows.push([x.cat || "", x.name, x.model || "", x.loc || "", x.unit || "", x.qty, x.min || 0, lo ? md(lo.ts) + " " + hm(lo.ts) : ""]);
+        });
+        var csv = "﻿" + rows.map(function (r) { return r.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(","); }).join("\r\n");
+        await downloads.save({ filename: "棚卸表_" + dayKey(Date.now()) + ".csv", data: csv });
+      } catch (err) { /* viewer declined */ }
+    }
+  });
+
+  /* ---------- boot ---------- */
+  async function boot() {
+    render();
+    try { db = window.claude && await window.claude.use("db"); } catch (e) { db = null; }
+    if (!db) {
+      setSync(false, "この画面ではデータを読み込めません");
+      S.itemsReady = true; S.logReady = true; S.canWrite = false; render();
+      return;
+    }
+    try { userCap = await window.claude.use("user"); } catch (e) { userCap = null; }
+    try { downloads = await window.claude.use("downloads"); } catch (e) { downloads = null; }
+    if (userCap) {
+      try { S.uid = await userCap.id(); } catch (e) {}
+      try { S.canWrite = (await userCap.can("data.write")) !== false; } catch (e) {}
+      try { var me = await userCap.me(); if (me && me.name && S.uid) S.names[S.uid] = me.name; } catch (e) {}
+    }
+    itemsCol = db.collection("items");
+    logCol = db.collection("log");
+    itemsCol.onSnapshot(function (snap) {
+      S.items = mapDocs(snap); S.itemsReady = true; setSync(true, "共有中"); render();
+    }, function () { setSync(false, "接続が切れました。再読み込みしてください"); });
+    logCol.orderBy("ts", "desc").limit(500).onSnapshot(function (snap) {
+      S.log = mapDocs(snap); S.logReady = true; render(); resolveNames();
+    }, function () { setSync(false, "接続が切れました。再読み込みしてください"); });
+    render();
+  }
+  boot();
+})();
+</script>
