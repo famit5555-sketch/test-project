@@ -372,7 +372,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     var catOpts = CATS.map(function (c) { return '<option value="' + esc(c) + '"' + (f.cat === c ? " selected" : "") + ">" + esc(c) + "</option>"; }).join("");
     return '<div class="formcard"><h3>' + (isEdit ? "品目を編集" : "品目を追加") + "</h3>" +
       '<div class="fields">' +
-      '<label class="f">品名<input type="text" id="f_name" value="' + esc(f.name) + '" placeholder="例：シングルレバー混合栓"></label>' +
+      '<label class="f">品名・品番<input type="text" id="f_name" value="' + esc(f.name) + '" placeholder="例：シングルレバー混合栓"></label>' +
       '<label class="f">カテゴリ<select id="f_cat">' + catOpts + "</select></label>" +
       '<label class="f">メーカー<select id="f_maker"><option value="">選択してください</option>' + makerOpts + '</select></label>' +
       '<label class="f" id="f_makerOtherWrap"' + (f.maker === OTHER ? "" : " hidden") + '>メーカー名（その他）<input type="text" id="f_makerOther" value="' + esc(f.makerOther) + '"></label>' +
@@ -416,6 +416,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   }
 
   function rowHTML(it) {
+    if (S.editing === it.id && S.canWrite) return formHTML(S.form, true);
     var st = stateOf(it), lo = lastOutOf(it.id), open = S.open === it.id;
     var pill = st === "zero" ? '<span class="pill zero">在庫切れ</span>' : (st === "low" ? '<span class="pill low">残りわずか</span>' : "");
     var meta = [];
@@ -428,7 +429,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       : '<span class="none">出庫の記録なし</span>';
     var w = S.canWrite;
     return '<article class="row' + (open ? " is-open" : "") + '" data-id="' + esc(it.id) + '">' +
-      '<div><h3 class="name">' + esc(it.name) + " " + pill + '</h3><p class="meta">' + (meta.join(" ・ ") || "&nbsp;") + "</p></div>" +
+      '<div><h3 class="name">' + esc(it.name) + " " + pill + (S.canWrite ? ' <button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を編集">編集</button>' : "") + '</h3><p class="meta">' + (meta.join(" ・ ") || "&nbsp;") + "</p></div>" +
       '<div class="last">' + last + "</div>" +
       '<div class="qty"><button data-act="quick" data-kind="out" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ出庫"' + (w && it.qty > 0 ? "" : " disabled") + ">−</button>" +
       '<button class="num ' + st + '" data-act="open" data-id="' + esc(it.id) + '" aria-expanded="' + open + '" aria-label="' + esc(it.name) + ' 数量 ' + it.qty + ' 詳細を開く">' + it.qty + "<small>" + esc(it.unit || "") + "</small></button>" +
@@ -439,10 +440,6 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   function stockHTML() {
     var html = toolbarHTML();
     if (S.adding && S.canWrite) html += formHTML(S.form, false);
-    if (S.editing) {
-      // edit form is rendered in place of the list header
-      html += formHTML(S.form, true);
-    }
     if (!S.itemsReady) return html + '<div class="empty"><p>読み込み中です</p></div>';
     var list = filteredItems();
     if (!S.items.length) {
@@ -592,7 +589,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       S.editing = id; S.adding = false; S.open = null;
       var mk = makerOf(it), known = !mk || MAKERS.indexOf(mk) >= 0;
       S.form = { name: it.name || "", cat: it.cat || CATS[0], maker: known ? mk : OTHER, makerOther: known ? "" : mk, model: modelOf(it), loc: it.loc || "", unit: it.unit || "", min: it.min ? String(it.min) : "" };
-      S.err = ""; render(); window.scrollTo({ top: 0, behavior: "smooth" });
+      S.err = ""; render(); var fn2 = $("f_name"); if (fn2) { fn2.focus(); fn2.scrollIntoView({ block: "center", behavior: "smooth" }); }
     } else if (act === "cancelForm") {
       S.adding = false; S.editing = null; S.form = null; S.err = ""; render();
     } else if (act === "saveItem") {
