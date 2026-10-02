@@ -86,7 +86,7 @@ textarea { resize: vertical; }
 .group { display: grid; gap: 6px; }
 .group h2 { margin: 10px 0 0; font-size: 13px; letter-spacing: .08em; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
 .group h2 i { font-style: normal; font-family: var(--font-num); }
-.row { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.3fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px; }
+.row { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: grid; grid-template-columns: 96px minmax(0, 1.5fr) minmax(0, 1.2fr) auto; gap: 8px 16px; align-items: center; padding: 10px 12px 10px 10px; }
 .row.is-open { border-color: var(--accent); }
 .name { margin: 0; font-size: 15px; font-weight: 700; display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; overflow-wrap: anywhere; }
 .meta { margin: 0; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
@@ -100,14 +100,20 @@ textarea { resize: vertical; }
 .pill.out { background: var(--out-soft); color: var(--out); }
 .pill.in { background: var(--in-soft); color: var(--in); }
 .pill.adj { background: var(--surface-2); color: var(--muted); border: 1px solid var(--line); }
-.qty { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; justify-self: end; }
-.qty button { border: 0; background: var(--surface-2); width: 44px; font-size: 20px; font-weight: 700; }
-.qty button:hover:not([disabled]) { background: var(--accent-soft); }
-.qty button[disabled] { opacity: .4; cursor: not-allowed; }
-.qty .num { width: 78px; background: var(--surface); font-family: var(--font-num); font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; display: flex; align-items: baseline; justify-content: center; gap: 3px; padding: 6px 4px; border-inline: 1px solid var(--line); }
-.qty .num small { font-family: var(--font-body); font-size: 11px; font-weight: 400; color: var(--muted); }
-.num.zero { color: var(--bad); }
-.num.low { color: var(--warn); }
+.tile { border: 1px solid var(--line); background: var(--surface-2); border-radius: 8px; width: 96px; min-height: 80px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 6px 4px; line-height: 1.1; }
+.tile:hover { border-color: var(--accent); }
+.tile .lbl { font-size: 11px; color: var(--muted); font-weight: 500; }
+.tile .big { font-family: var(--font-num); font-size: 40px; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.tile .u { font-size: 11px; color: var(--muted); }
+.tile.low { background: var(--warn-soft); border-color: var(--warn); }
+.tile.low .big { color: var(--warn); }
+.tile.zero { background: var(--bad-soft); border-color: var(--bad); }
+.tile.zero .big { color: var(--bad); }
+.tile[aria-expanded="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+.steps { display: inline-flex; gap: 6px; justify-self: end; }
+.steps button { width: 48px; height: 48px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 24px; font-weight: 700; line-height: 1; }
+.steps button:hover:not([disabled]) { background: var(--accent-soft); border-color: var(--accent); }
+.steps button[disabled] { opacity: .4; cursor: not-allowed; }
 
 .panel { grid-column: 1 / -1; border-top: 1px dashed var(--line); padding-top: 12px; display: grid; gap: 10px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; width: fit-content; max-width: 100%; }
@@ -146,7 +152,9 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
 
 @media (max-width: 680px) {
   .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .row { grid-template-columns: minmax(0, 1fr) auto; }
+  .row { grid-template-columns: 84px minmax(0, 1fr) auto; }
+  .tile { width: 84px; }
+  .tile .big { font-size: 34px; }
   .row .last { grid-column: 1 / -1; order: 3; }
   .hist { grid-template-columns: 48px minmax(0, 1fr) auto; }
   .hist .pill { grid-column: 2; justify-self: start; }
@@ -154,7 +162,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   .hist .by { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .btn, .chip, .qty button { transition: background-color .12s, border-color .12s; }
+  .btn, .chip, .steps button, .tile { transition: background-color .12s, border-color .12s; }
 }
 </style>
 
@@ -429,10 +437,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       : '<span class="none">出庫の記録なし</span>';
     var w = S.canWrite;
     return '<article class="row' + (open ? " is-open" : "") + '" data-id="' + esc(it.id) + '">' +
+      '<button class="tile ' + st + '" data-act="open" data-id="' + esc(it.id) + '" aria-expanded="' + open + '" aria-label="' + esc(it.name) + ' 残り ' + it.qty + esc(it.unit || "") + '、詳細を開く"><span class="lbl">残り</span><span class="big">' + it.qty + '</span><span class="u">' + esc(it.unit || "") + "</span></button>" +
       '<div><h3 class="name">' + esc(it.name) + " " + pill + (S.canWrite ? ' <button class="btn sm" data-act="edit" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を編集">編集</button>' : "") + '</h3><p class="meta">' + (meta.join(" ・ ") || "&nbsp;") + "</p></div>" +
       '<div class="last">' + last + "</div>" +
-      '<div class="qty"><button data-act="quick" data-kind="out" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ出庫"' + (w && it.qty > 0 ? "" : " disabled") + ">−</button>" +
-      '<button class="num ' + st + '" data-act="open" data-id="' + esc(it.id) + '" aria-expanded="' + open + '" aria-label="' + esc(it.name) + ' 数量 ' + it.qty + ' 詳細を開く">' + it.qty + "<small>" + esc(it.unit || "") + "</small></button>" +
+      '<div class="steps"><button data-act="quick" data-kind="out" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ出庫"' + (w && it.qty > 0 ? "" : " disabled") + ">−</button>" +
       '<button data-act="quick" data-kind="in" data-id="' + esc(it.id) + '" aria-label="' + esc(it.name) + ' を1つ入庫"' + (w ? "" : " disabled") + ">＋</button></div>" +
       (open && w ? panelHTML(it) : "") + "</article>";
   }
