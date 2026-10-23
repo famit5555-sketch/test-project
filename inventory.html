@@ -206,7 +206,12 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   var UNITS = ["個", "台", "本", "セット", "枚", "箱", "m"];
   function makerOf(it) { return it.maker || (MAKERS.indexOf(it.model) >= 0 ? it.model : ""); }
   function modelOf(it) { return it.maker ? (it.model || "") : (MAKERS.indexOf(it.model) >= 0 ? "" : (it.model || "")); }
-  var KIND = { out: "出庫", "in": "入庫", adjust: "棚卸修正" };
+  var KIND = { out: "出庫", "in": "入庫", adjust: "棚卸修正", create: "新規登録", edit: "品目編集", "delete": "品目削除" };
+  var EVENT = { create: 1, edit: 1, "delete": 1 };
+  function logSign(l) {
+    if (EVENT[l.kind]) return "";
+    return l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
+  }
 
   var S = {
     tab: "stock", cat: "all", stock: "all", maker: "all", q: "",
@@ -247,7 +252,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   function who(uid) {
     if (!uid) return "不明";
     if (S.uid && uid === S.uid) return (S.names[uid] || "自分");
-    return S.names[uid] || "社員";
+    return S.names[uid] || "ほかの社員";
   }
   function stateOf(it) {
     var q = it.qty || 0, m = it.min || 0;
@@ -275,6 +280,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     if (!userCap) return;
     var ids = {};
     S.log.forEach(function (l) { if (l.by) ids[l.by] = 1; });
+    S.items.forEach(function (it) { if (it.updatedBy) ids[it.updatedBy] = 1; });
     if (S.uid) ids[S.uid] = 1;
     var list = Object.keys(ids);
     if (!list.length) return;
@@ -302,7 +308,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     if (after < 0) { throw { code: "negative" }; }
     var delta = after - before;
     return enqueue(async function () {
-      await itemsCol.doc(item.id).update({ qty: after, updatedAt: Date.now() });
+      await itemsCol.doc(item.id).update({ qty: after, updatedAt: Date.now(), updatedBy: S.uid || null });
       var ref = await logCol.add({
         ts: Date.now(), itemId: item.id, itemName: item.name, cat: item.cat || "", unit: item.unit || "",
         kind: kind, n: kind === "adjust" ? Math.abs(delta) : n, delta: delta, before: before, after: after,
@@ -312,9 +318,23 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     });
   }
 
+  function logEvent(kind, item, note, extra) {
+    return logCol.add(Object.assign({
+      ts: Date.now(), itemId: item.id, itemName: item.name, cat: item.cat || "", unit: item.unit || "",
+      kind: kind, n: 0, delta: 0, before: item.qty || 0, after: item.qty || 0,
+      by: S.uid || null, note: note || ""
+    }, extra || {}));
+  }
+  function diffNote(it, v, makerName) {
+    var out = [];
+    function d(label, a, b) { a = a == null ? "" : String(a); b = b == null ? "" : String(b); if (a !== b) out.push(label + "：" + (a || "なし") + "→" + (b || "なし")); }
+    d("品名", it.name, v.name); d("カテゴリ", it.cat, v.cat); d("メーカー", makerOf(it), makerName);
+    d("型番", modelOf(it), v.model); d("置き場", it.loc, v.loc); d("単位", it.unit, v.unit || "個"); d("目安", it.min || 0, v.min || 0);
+    return out.join(" / ") || "変更なし";
+  }
   async function undoChange(item, res) {
     return enqueue(async function () {
-      await itemsCol.doc(item.id).update({ qty: res.before, updatedAt: Date.now() });
+      await itemsCol.doc(item.id).update({ qty: res.before, updatedAt: Date.now(), updatedBy: S.uid || null });
       await logCol.doc(res.logId).update({ cancelled: true });
     });
   }
@@ -415,11 +435,11 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     var html = head + '<div class="ilist">';
     rows.forEach(function (l) {
       var cls = l.kind === "out" ? "out" : (l.kind === "in" ? "in" : "adj");
-      var sign = l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
+      var sign = logSign(l);
       html += '<div class="irow' + (l.cancelled ? " cancelled" : "") + '"><span class="when">' + md(l.ts) + "（" + WD[new Date(l.ts).getDay()] + "） " + hm(l.ts) + '</span>' +
         '<span class="pill ' + cls + '">' + KIND[l.kind] + (l.cancelled ? "（取消）" : "") + '</span>' +
-        '<span class="x">' + sign + esc(it.unit || l.unit || "") + '</span>' +
-        '<span class="rest">残 ' + l.after + '</span>' +
+        '<span class="x">' + (sign ? sign + esc(it.unit || l.unit || "") : "") + '</span>' +
+        '<span class="rest">' + (EVENT[l.kind] ? "" : "残 " + l.after) + '</span>' +
         '<span class="who">' + esc(who(l.by)) + (l.note ? " ・ " + esc(l.note) : "") + "</span></div>";
     });
     return html + "</div></div>";
@@ -450,7 +470,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       (confirm
         ? '<button class="btn sm danger" data-act="delete" data-id="' + esc(it.id) + '">本当に削除する</button>'
         : '<button class="btn sm danger" data-act="askDelete" data-id="' + esc(it.id) + '">削除</button>') +
-      "</div>" + itemLogHTML(it) + "</div>";
+      "</div>" + (it.updatedAt ? '<p class="meta">最終更新：<b>' + esc(who(it.updatedBy)) + "</b> ・ " + md(it.updatedAt) + " " + hm(it.updatedAt) + "</p>" : "") + itemLogHTML(it) + "</div>";
   }
 
   function rowHTML(it) {
@@ -496,7 +516,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
   }
 
   function histHTML() {
-    var kinds = [["all", "すべて"], ["out", "出庫"], ["in", "入庫"], ["adjust", "棚卸修正"]];
+    var kinds = [["all", "すべて"], ["out", "出庫"], ["in", "入庫"], ["adjust", "棚卸修正"], ["edit", "品目の変更"]];
     var html = '<div class="toolbar"><div class="filterbar"><div class="chips">' +
       kinds.map(function (k) { return '<button class="chip" data-hk="' + k[0] + '" aria-pressed="' + (S.histKind === k[0]) + '">' + k[1] + "</button>"; }).join("") +
       "</div>" + (S.histItem ? '<span class="tag">' + esc(itemName(S.histItem)) + '<button data-act="clearHistItem" aria-label="品目の絞り込みを解除">×</button></span>' : "") +
@@ -504,7 +524,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     if (!S.logReady) return html + '<div class="empty"><p>読み込み中です</p></div>';
     var rows = S.log.filter(function (l) {
       if (S.histItem && l.itemId !== S.histItem) return false;
-      if (S.histKind !== "all" && l.kind !== S.histKind) return false;
+      if (S.histKind === "edit" ? !EVENT[l.kind] : (S.histKind !== "all" && l.kind !== S.histKind)) return false;
       return true;
     });
     if (!rows.length) return html + '<div class="empty"><h3>履歴はまだありません</h3><p>数量を変更すると、日時・担当者・出庫先がここに並びます。</p></div>';
@@ -514,10 +534,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       var k = dayKey(l.ts);
       if (k !== day) { html += '<div class="day">' + esc(dayLabel(l.ts)) + "</div>"; day = k; }
       var cls = l.kind === "out" ? "out" : (l.kind === "in" ? "in" : "adj");
-      var sign = l.kind === "out" ? "−" + l.n : (l.kind === "in" ? "＋" + l.n : (l.delta >= 0 ? "＋" : "−") + Math.abs(l.delta || 0));
+      var sign = logSign(l);
       html += '<div class="hist' + (l.cancelled ? " cancelled" : "") + '"><span class="t">' + hm(l.ts) + '</span><span class="pill ' + cls + '">' + KIND[l.kind] + (l.cancelled ? "（取消）" : "") + "</span>" +
-        '<span class="what"><b>' + esc(l.itemName) + '</b><span class="x">' + sign + esc(l.unit || "") + "</span></span>" +
-        '<span class="after">残 ' + l.after + "</span>" +
+        '<span class="what"><b>' + esc(l.itemName) + '</b><span class="x">' + (sign ? sign + esc(l.unit || "") : "") + "</span></span>" +
+        '<span class="after">' + (EVENT[l.kind] ? "" : "残 " + l.after) + "</span>" +
         '<span class="by">' + esc(who(l.by)) + (l.note ? " ・ " + esc(l.note) : "") + "</span></div>";
     });
     return html + "</div>";
@@ -643,11 +663,16 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       if (isNaN(min) || min < 0 || Math.floor(min) !== min) { S.err = "補充の目安は0以上の整数で入力してください。"; render(); return; }
       try {
         if (S.editing) {
-          await enqueue(function () { return itemsCol.doc(S.editing).update({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", min: min, updatedAt: Date.now() }); });
+          var cur = S.items.find(function (x) { return x.id === S.editing; });
+          var note = cur ? diffNote(cur, v, makerName) : "";
+          await enqueue(async function () {
+            await itemsCol.doc(S.editing).update({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", min: min, updatedAt: Date.now(), updatedBy: S.uid || null });
+            if (note !== "変更なし") await logEvent("edit", { id: S.editing, name: v.name, cat: v.cat, unit: v.unit || "個", qty: cur ? cur.qty : 0 }, note);
+          });
           toast("品目を更新しました");
         } else {
-          var ref = await enqueue(function () { return itemsCol.add({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", qty: qty, min: min, createdAt: Date.now(), updatedAt: Date.now() }); });
-          if (qty > 0) await enqueue(function () { return logCol.add({ ts: Date.now(), itemId: ref.id, itemName: v.name, cat: v.cat, unit: v.unit || "個", kind: "adjust", n: qty, delta: qty, before: 0, after: qty, by: S.uid || null, note: "新規登録" }); });
+          var ref = await enqueue(function () { return itemsCol.add({ name: v.name, cat: v.cat, maker: makerName, model: v.model, loc: v.loc, unit: v.unit || "個", qty: qty, min: min, createdAt: Date.now(), createdBy: S.uid || null, updatedAt: Date.now(), updatedBy: S.uid || null }); });
+          await enqueue(function () { return logEvent("create", { id: ref.id, name: v.name, cat: v.cat, unit: v.unit || "個", qty: qty }, "初期数量 " + qty + (v.unit || "個")); });
           toast(v.name + " を追加しました");
         }
         S.adding = false; S.editing = null; S.form = null; S.err = ""; render();
@@ -656,7 +681,10 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
       S.confirmDelete = id; render();
     } else if (act === "delete" && it) {
       try {
-        await enqueue(function () { return itemsCol.doc(id).delete(); });
+        await enqueue(async function () {
+          await logEvent("delete", it, "削除時の数量 " + (it.qty || 0) + (it.unit || ""));
+          await itemsCol.doc(id).delete();
+        });
         S.open = null; S.confirmDelete = null; render(); toast(it.name + " を削除しました（履歴は残ります）");
       } catch (err) { toast("削除できませんでした"); }
     } else if (act === "showHist") {
@@ -695,7 +723,7 @@ label.f { display: grid; gap: 3px; font-size: 12.5px; color: var(--muted); font-
     itemsCol = db.collection("items");
     logCol = db.collection("log");
     itemsCol.onSnapshot(function (snap) {
-      S.items = mapDocs(snap); S.itemsReady = true; setSync(true, "共有中"); render();
+      S.items = mapDocs(snap); S.itemsReady = true; setSync(true, "共有中"); render(); resolveNames();
     }, function () { setSync(false, "接続が切れました。再読み込みしてください"); });
     logCol.orderBy("ts", "desc").limit(500).onSnapshot(function (snap) {
       S.log = mapDocs(snap); S.logReady = true; render(); resolveNames();
